@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
-public class Orbiter {
+public class Arbiter {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         int tick = 1000;
