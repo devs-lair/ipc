@@ -27,16 +27,6 @@ public class Arbiter {
         this.tick = tick;
     }
 
-    private static String computeWinner(String playerOneName, String playerTwoName,
-                                        String playerOneMove, String playerTwoMove) {
-        if ((playerOneMove.equals("ROCK") && playerTwoMove.equals("SCISSORS"))
-                || (playerOneName.equals("PAPER") && playerTwoMove.equals("ROCK")
-                || (playerOneName.equals("SCISSORS") && playerTwoMove.equals("PAPER")))) {
-            return playerOneName;
-        }
-        return playerTwoName;
-    }
-
     public void start() throws InterruptedException {
         int gameNumber = 1;
 
@@ -59,6 +49,21 @@ public class Arbiter {
         }
     }
 
+    private static String computeWinner(String playerOneName, String playerTwoName,
+                                        String playerOneMove, String playerTwoMove) {
+        if ((playerOneMove.equals("ROCK") && playerTwoMove.equals("SCISSORS"))
+                || (playerOneName.equals("PAPER") && playerTwoMove.equals("ROCK")
+                || (playerOneName.equals("SCISSORS") && playerTwoMove.equals("PAPER")))) {
+            return playerOneName;
+        }
+        return playerTwoName;
+    }
+
+    public void clearFiles() {
+        clearFile(playerOneName);
+        clearFile(playerTwoName);
+    }
+
     private String readPlayerMove(String playerName) throws InterruptedException {
         int attempt = 0;
         int maxAttempt = 10;
@@ -68,7 +73,7 @@ public class Arbiter {
         while (attempt < maxAttempt) {
             try {
                 if (Files.size(path) == 0) {
-                    System.out.println("Ождидаем хода игрока" + playerName);
+                    System.out.println("Ождидаем хода игрока " + playerName);
                 } else {
                     return new String(Files.readAllBytes(path));
                 }
@@ -83,17 +88,12 @@ public class Arbiter {
         return null;
     }
 
-    public void clearFiles() {
-        clearFile(playerOneName);
-        clearFile(playerTwoName);
-    }
-
     private void clearFile(String playerName) {
         try {
             Files.write(Paths.get(playerName), "".getBytes(), StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException ex) {
             if (ex instanceof NoSuchFileException) {
-                System.out.println("В момент записи, не файл игрока" + playerName);
+                System.out.println("В момент записи, не файл игрока " + playerName);
             }
         }
     }
