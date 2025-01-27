@@ -9,18 +9,9 @@ public class Arbiter {
     private final int tick;
 
     public Arbiter(String playerOneName, String playerTwoName, int tick) {
-
-        if (playerOneName == null || playerOneName.isEmpty()) {
-            throw new IllegalArgumentException("Не верное имя первого игрока!");
-        }
-
-        if (playerTwoName == null || playerTwoName.isEmpty()) {
-            throw new IllegalArgumentException("Не верное имя второго игрока!");
-        }
-
-        if (tick < 0) {
-            throw new IllegalArgumentException("Тик должен быть строго больше нуля");
-        }
+        checkName(playerOneName, true);
+        checkName(playerOneName, false);
+        checkTick(tick);
 
         this.playerOneName = playerOneName;
         this.playerTwoName = playerTwoName;
@@ -49,21 +40,6 @@ public class Arbiter {
         }
     }
 
-    private static String computeWinner(String playerOneName, String playerTwoName,
-                                        String playerOneMove, String playerTwoMove) {
-        if ((playerOneMove.equals("ROCK") && playerTwoMove.equals("SCISSORS"))
-                || (playerOneName.equals("PAPER") && playerTwoMove.equals("ROCK")
-                || (playerOneName.equals("SCISSORS") && playerTwoMove.equals("PAPER")))) {
-            return playerOneName;
-        }
-        return playerTwoName;
-    }
-
-    public void clearFiles() {
-        clearFile(playerOneName);
-        clearFile(playerTwoName);
-    }
-
     private String readPlayerMove(String playerName) throws InterruptedException {
         int attempt = 0;
         int maxAttempt = 10;
@@ -88,6 +64,11 @@ public class Arbiter {
         return null;
     }
 
+    public void clearFiles() {
+        clearFile(playerOneName);
+        clearFile(playerTwoName);
+    }
+
     private void clearFile(String playerName) {
         try {
             Files.write(Paths.get(playerName), "".getBytes(), StandardOpenOption.TRUNCATE_EXISTING);
@@ -99,12 +80,18 @@ public class Arbiter {
     }
 
     private void printResult(String playerOneMove, String playerTwoMove) {
-        if (playerOneMove.equals(playerTwoMove)) {
-            System.out.println("Ничья");
-        } else {
-            System.out.printf("Выиграл %s \n", computeWinner(playerOneName, playerTwoName,
-                    playerOneMove, playerTwoMove));
+        System.out.printf(playerOneMove.equals(playerTwoMove) ? "Ничья" :
+                "Выиграл %s \n", computeWinner(playerOneMove, playerTwoMove));
+    }
+
+
+    private String computeWinner(String playerOneMove, String playerTwoMove) {
+        if ((playerOneMove.equals("ROCK") && playerTwoMove.equals("SCISSORS"))
+                || (playerOneMove.equals("PAPER") && playerTwoMove.equals("ROCK")
+                || (playerOneMove.equals("SCISSORS") && playerTwoMove.equals("PAPER")))) {
+            return playerOneName;
         }
+        return playerTwoName;
     }
 
     private void printPlayerMove(String playerOneMove, String playerName) {
@@ -112,6 +99,20 @@ public class Arbiter {
             System.out.printf("Ход игрока %s = %s \n", playerName, playerOneMove);
         } else {
             System.out.println("Нет хода игрока " + playerName);
+        }
+    }
+
+    private void checkName(String playerName, boolean isFirstPlayer) {
+        if (playerName == null || playerName.isEmpty()) {
+            throw new IllegalArgumentException(isFirstPlayer
+                    ? "Не верное имя первого игрока!"
+                    : "Не верное имя второго игрока!");
+        }
+    }
+
+    private void checkTick(int tick) {
+        if (tick < 0) {
+            throw new IllegalArgumentException("Тик должен быть строго больше нуля");
         }
     }
 }
