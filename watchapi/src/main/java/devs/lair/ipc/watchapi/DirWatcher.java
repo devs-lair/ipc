@@ -31,7 +31,7 @@ public class DirWatcher implements AutoCloseable {
      */
 
     public DirWatcher(String path) {
-        watchDir = Paths.get(path);
+        watchDir = Paths.get(path).toAbsolutePath();
         if (!Files.isDirectory(watchDir)) {
             throw new IllegalArgumentException("Директории не существует, либо передан файл");
         }
