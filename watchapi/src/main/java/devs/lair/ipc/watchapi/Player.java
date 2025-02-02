@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Random;
 
 public class Player {
-
+    private final String FILE_SUFFIX = ".move";
     private final Random random = new Random();
     private final String name;
     private final int tick;
@@ -32,7 +32,7 @@ public class Player {
     }
 
     public void start() throws IOException, InterruptedException {
-        Path path = Paths.get(name);
+        Path path = Paths.get(name + FILE_SUFFIX);
 
         if (!Files.exists(path)) {
             Files.createFile(path);
@@ -50,7 +50,7 @@ public class Player {
 
     public void stop() {
         isStop = true;
-        while (Files.exists(Paths.get(name))) ;
+        while (Files.exists(Paths.get(name + FILE_SUFFIX))) ;
     }
 
     private byte[] makeMove() {

@@ -3,14 +3,12 @@ package devs.lair.ipc.watchapi;
 public class PlayerStarter {
 
     public static void main(String[] args) {
-        int tick = 1000;
+        int tick = 500;
 
-        if (args.length == 0) {
-            System.out.println("Передайте имя игрока в параметрах!");
-            System.exit(-1);
+        String name = "player" + System.currentTimeMillis();
+        if (args.length > 0 && !args[0].isEmpty()) {
+            name = args[0];
         }
-
-        String name = args[0];
 
         try {
             Player player = new Player(name, tick);
