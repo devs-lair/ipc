@@ -132,7 +132,7 @@ public class Arbiter {
                     System.out.println("Ожидаем хода игрока " + playerName);
                 } else {
                     String playerMove = new String(Files.readAllBytes(playerFile));
-                    return checkPlayerMove(playerMove);
+                    return checkPlayerMove(playerMove, playerName);
                 }
             } catch (IOException e) {
                 if (e instanceof NoSuchFileException) {
@@ -181,8 +181,13 @@ public class Arbiter {
         }
         return tick;
     }
-    private String checkPlayerMove(String playerMove) {
-        return legalMoves.contains(playerMove) ? playerMove : null;
+    private String checkPlayerMove(String playerMove, String playerName) {
+        boolean isMoveLegal = legalMoves.contains(playerMove);
+        if (!isMoveLegal) {
+            System.out.println("Не корректный ход игрока "
+                    + playerName + ". Ход = " + playerMove);
+        }
+        return isMoveLegal ? playerMove : null;
     }
 
     private String getNameFromPath(Path path) {
