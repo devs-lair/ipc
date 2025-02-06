@@ -12,6 +12,7 @@
         <module>file</module>
         <module>signal</module>
         <module>watchapi</module>
+        <module>rmi</module>
     </modules>
 
     <properties>
