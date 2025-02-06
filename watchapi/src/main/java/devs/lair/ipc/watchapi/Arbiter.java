@@ -63,6 +63,7 @@ public class Arbiter {
 
         int totalGamesCount = 1;
         int roundNumber = 1;
+        int maxRound = 5;
         boolean isNewGame = false;
 
         while (true) {
@@ -91,7 +92,7 @@ public class Arbiter {
                 isNewGame = false;
             }
 
-            System.out.printf("Игра номер %d \n", roundNumber);
+            System.out.printf("\nИгра номер %d \n", roundNumber);
 
             String playerOneMove = readPlayerMove(playerOneName);
             printPlayerMove(playerOneMove, playerOneName);
@@ -102,10 +103,15 @@ public class Arbiter {
             if (playerOneMove != null && playerTwoMove != null) {
                 printResult(playerOneMove, playerTwoMove);
                 clearFiles();
-                roundNumber++;
                 totalGamesCount++;
-            }
 
+                if (roundNumber == maxRound) {
+                    System.out.printf("Игроки %s и %s завершили игру \n\n",
+                            playerOneName, playerTwoName);
+                    deletePlayersFiles();
+                }
+                roundNumber++;
+            }
             Thread.sleep(tick);
         }
     }
@@ -153,6 +159,23 @@ public class Arbiter {
         }
 
         return null;
+    }
+
+    private void deletePlayersFiles() {
+        deletePlayersFile(playerOneName);
+        deletePlayersFile(playerTwoName);
+
+        playerOneName = null;
+        playerTwoName = null;
+    }
+
+    private void deletePlayersFile(String playerName) {
+        Path playerFile = Paths.get(playerName + FILE_SUFFIX);
+        try {
+            Files.delete(playerFile);
+        } catch (IOException e) {
+            System.out.println("Не удалось удалить файл игрока");
+        }
     }
 
     private void printResult(String playerOneMove, String playerTwoMove) {
