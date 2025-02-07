@@ -1,8 +1,11 @@
 package devs.lair.ipc.rmi;
 
+import devs.lair.ipc.rmi.utils.DirWatcher;
+import devs.lair.ipc.rmi.utils.FilesUtils;
+import devs.lair.ipc.rmi.utils.Move;
+
 import java.io.IOException;
 import java.nio.file.*;
-import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.stream.Stream;
@@ -13,7 +16,6 @@ public class Arbiter {
     private final String FILE_SUFFIX = ".move";
     private final String FILE_DIR = "players";
 
-    private final Set<String> legalMoves = Set.of("ROCK", "SCISSORS", "PAPER");
     private final BlockingQueue<String> players = new ArrayBlockingQueue<>(1024);
 
     private String playerOneName;
@@ -26,7 +28,7 @@ public class Arbiter {
 
     public void start() throws InterruptedException {
         try (Stream<Path> playersFiles =
-                     Files.walk(Paths.get("./" + FILE_DIR).toAbsolutePath(), 1)) {
+                     Files.walk(Paths.get(FILE_DIR).toAbsolutePath(), 1)) {
             players.addAll(playersFiles
                     .filter(p -> Files.isRegularFile(p) && p.toString().contains(FILE_SUFFIX))
                     .map(p -> getNameFromPath(p.getFileName()))
@@ -36,7 +38,7 @@ public class Arbiter {
             throw new IllegalStateException("Ошибка, при получении списка файлов", e);
         }
 
-        dirWatcher = new DirWatcher("./" + FILE_DIR);
+        dirWatcher = new DirWatcher(FILE_DIR);
         dirWatcher.addListener(new DirWatcher.DirWatcherListener() {
             @Override
             public void onCreate(WatchEvent<Path> event) {
@@ -94,15 +96,15 @@ public class Arbiter {
 
             System.out.printf("\nИгра номер %d \n", roundNumber);
 
-            String playerOneMove = readPlayerMove(playerOneName);
+            Move playerOneMove = readPlayerMove(playerOneName);
             printPlayerMove(playerOneMove, playerOneName);
 
-            String playerTwoMove = readPlayerMove(playerTwoName);
+            Move playerTwoMove = readPlayerMove(playerTwoName);
             printPlayerMove(playerTwoMove, playerTwoName);
 
             if (playerOneMove != null && playerTwoMove != null) {
                 printResult(playerOneMove, playerTwoMove);
-                clearFiles();
+                clearPlayerFiles(playerOneName, playerTwoName);
                 totalGamesCount++;
 
                 if (roundNumber == maxRound) {
@@ -117,7 +119,7 @@ public class Arbiter {
     }
 
     public void stop() {
-        clearFiles();
+        clearPlayerFiles();
         closeWatcher();
     }
 
@@ -127,34 +129,36 @@ public class Arbiter {
                 ? playerName : null;
     }
 
-    private String readPlayerMove(String playerName) throws InterruptedException {
+    private Move readPlayerMove(String playerName) throws InterruptedException {
         int attempt = 0;
         int maxAttempt = 10;
 
         Path playerFile = getPathFromName(playerName);
         while (attempt < maxAttempt) {
+            String playerMove = "";
             try {
                 if (Files.size(playerFile) == 0) {
                     System.out.println("Ожидаем хода игрока " + playerName);
                 } else {
-                    String playerMove = new String(Files.readAllBytes(playerFile));
-                    return checkPlayerMove(playerMove, playerName);
+                    playerMove = new String(Files.readAllBytes(playerFile));
+                    return Move.valueOf(playerMove);
                 }
             } catch (IOException e) {
                 if (e instanceof NoSuchFileException) {
                     System.out.println("Нет файла для игрока " + playerName);
                 }
+            } catch (IllegalArgumentException e) {
+                System.out.println("Не корректный ход игрока "
+                        + playerName + ". Ход = " + playerMove);
+                return null;
             }
+
             attempt++;
             Thread.sleep(tick);
         }
 
         //Убиваем зомби игроков, которые есть, но не ходят
-        try {
-            if (Files.exists(playerFile)) {
-                Files.delete(playerFile);
-            }
-        } catch (IOException e) {
+        if (!FilesUtils.tryDelete(playerFile)) {
             System.out.println("Не удалось удалить файл зомби игрока");
         }
 
@@ -170,29 +174,19 @@ public class Arbiter {
     }
 
     private void deletePlayersFile(String playerName) {
-        Path playerFile = getPathFromName(playerName);
-        try {
-            Files.delete(playerFile);
-        } catch (IOException e) {
+        if (!FilesUtils.tryDelete(getPathFromName(playerName))) {
             System.out.println("Не удалось удалить файл игрока");
         }
     }
 
-    private void printResult(String playerOneMove, String playerTwoMove) {
-        System.out.printf(playerOneMove.equals(playerTwoMove) ? "Ничья \n" :
-                "Выиграл %s \n", computeWinner(playerOneMove, playerTwoMove));
+    private void printResult(Move playerOneMove, Move playerTwoMove) {
+        int compare = playerOneMove.compareWith(playerTwoMove);
+        System.out.printf(compare == 0
+                ? "Ничья \n" :
+                "Выиграл %s \n", compare == 1 ? playerOneName : playerTwoName);
     }
 
-    private String computeWinner(String playerOneMove, String playerTwoMove) {
-        if ((playerOneMove.equals("ROCK") && playerTwoMove.equals("SCISSORS"))
-                || (playerOneMove.equals("PAPER") && playerTwoMove.equals("ROCK")
-                || (playerOneMove.equals("SCISSORS") && playerTwoMove.equals("PAPER")))) {
-            return playerOneName;
-        }
-        return playerTwoName;
-    }
-
-    private void printPlayerMove(String playerOneMove, String playerName) {
+    private void printPlayerMove(Move playerOneMove, String playerName) {
         System.out.println(playerOneMove == null
                 ? "Нет хода игрока " + playerName
                 : "Ход игрока " + playerName + " = " + playerOneMove);
@@ -205,21 +199,12 @@ public class Arbiter {
         return tick;
     }
 
-    private String checkPlayerMove(String playerMove, String playerName) {
-        boolean isMoveLegal = legalMoves.contains(playerMove);
-        if (!isMoveLegal) {
-            System.out.println("Не корректный ход игрока "
-                    + playerName + ". Ход = " + playerMove);
-        }
-        return isMoveLegal ? playerMove : null;
-    }
-
     private String getNameFromPath(Path path) {
         return path.getFileName().toString().replace(FILE_SUFFIX, "");
     }
 
     private Path getPathFromName(String playerName) {
-        return Paths.get("./" + FILE_DIR + "/" + playerName + FILE_SUFFIX);
+        return Paths.get(FILE_DIR + "/" + playerName + FILE_SUFFIX);
     }
 
     private void closeWatcher() {
@@ -227,18 +212,15 @@ public class Arbiter {
         dirWatcher.close();
     }
 
-    private void clearFiles() {
-        clearFile(playerOneName);
-        clearFile(playerTwoName);
-    }
-
-    private void clearFile(String playerName) {
-        if (playerName == null) return;
-        try {
-            Files.write(getPathFromName(playerName), "".getBytes());
-        } catch (IOException ex) {
-            if (ex instanceof NoSuchFileException) {
-                System.out.println("В момент очистки, нет файл игрока " + playerName);
+    private void clearPlayerFiles(String ... playerNames) {
+        for (String playerName : playerNames) {
+            if (playerName == null) continue;
+            try {
+                Files.write(getPathFromName(playerName), "".getBytes());
+            } catch (IOException ex) {
+                if (ex instanceof NoSuchFileException) {
+                    System.out.println("В момент очистки, нет файл игрока " + playerName);
+                }
             }
         }
     }

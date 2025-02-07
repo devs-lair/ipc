@@ -1,4 +1,4 @@
-package devs.lair.ipc.rmi;
+package devs.lair.ipc.rmi.utils;
 
 import java.io.IOException;
 import java.nio.file.*;

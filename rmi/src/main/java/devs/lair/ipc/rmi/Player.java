@@ -1,29 +1,28 @@
 package devs.lair.ipc.rmi;
 
+import devs.lair.ipc.rmi.utils.FilesUtils;
+import devs.lair.ipc.rmi.utils.Move;
+
 import java.io.IOException;
-import java.nio.file.*;
-import java.util.Map;
-import java.util.Random;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class Player {
     private final String FILE_SUFFIX = ".move";
     private final String FILE_DIR = "players";
-    private final Random random = new Random();
+
     private final String name;
     private final Path playerFile;
     private final int tick;
-
-    private final Map<Integer, String> moves = Map.of(
-            0, "ROCK",
-            1, "SCISSORS",
-            2, "PAPER");
 
     private boolean isStop = false;
 
     public Player(String name, int tick) {
         this.name = name;
         this.tick = tick;
-        this.playerFile = Paths.get("./" + FILE_DIR + "/" + name + FILE_SUFFIX);
+        this.playerFile = Paths.get(FILE_DIR + "/" + name + FILE_SUFFIX);
 
         checkArgs(name, tick);
         createPlayerFile();
@@ -33,32 +32,23 @@ public class Player {
         while (!isStop) {
             try {
                 if (Files.size(playerFile) == 0) {
-                    Files.write(playerFile, makeMove());
+                    Files.write(playerFile, Move.getRandomMoveBytes());
                 }
                 Thread.sleep(tick);
             } catch (InterruptedException | IOException e) {
-               break;
+                break;
             }
         }
     }
 
     public void stop() {
         isStop = true;
-        try {
-            Files.delete(playerFile);
-        } catch (IOException e) {
-            if (e instanceof NoSuchFileException) {
-                System.out.println("Файл уже удален");
-            }
-        }
+        FilesUtils.tryDelete(playerFile);
     }
 
     private void createPlayerFile() {
         try {
-            if (!Files.exists(playerFile.getParent())) {
-                Files.createDirectory(playerFile.getParent());
-            }
-
+            FilesUtils.createDirectoryIfNotExist(playerFile.getParent());
             Files.createFile(playerFile);
             Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
         } catch (IOException e) {
@@ -66,11 +56,6 @@ public class Player {
                     ? "Игрок с именем " + name + " уже играет (есть файл)"
                     : "При создании файла игрока произошла ошибка");
         }
-    }
-
-    private byte[] makeMove() {
-        int rnd = random.nextInt(3);
-        return moves.get(rnd).getBytes();
     }
 
     private void checkArgs(String name, int tick) {
