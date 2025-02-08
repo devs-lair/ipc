@@ -24,7 +24,7 @@ public class Player {
         this.tick = tick;
         this.playerFile = Paths.get(FILE_DIR + "/" + name + FILE_SUFFIX);
 
-        checkArgs(name, tick);
+        checkArguments();
         createPlayerFile();
     }
 
@@ -58,7 +58,7 @@ public class Player {
         }
     }
 
-    private void checkArgs(String name, int tick) {
+    private void checkArguments() {
         if (name == null || name.isEmpty()) {
             throw new IllegalArgumentException("Не верное имя!");
         }
