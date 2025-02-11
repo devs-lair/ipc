@@ -1,18 +1,15 @@
 package devs.lair.ipc.rmi;
 
-import devs.lair.ipc.rmi.utils.FilesUtils;
 import devs.lair.ipc.rmi.utils.Move;
 
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+
+import static devs.lair.ipc.rmi.utils.CommonUtils.*;
 
 public class Player {
-    private final String FILE_SUFFIX = ".move";
-    private final String FILE_DIR = "players";
-
     private final String name;
     private final Path playerFile;
     private final int tick;
@@ -22,7 +19,7 @@ public class Player {
     public Player(String name, int tick) {
         this.name = name;
         this.tick = tick;
-        this.playerFile = Paths.get(FILE_DIR + "/" + name + FILE_SUFFIX);
+        this.playerFile = getPathFromName(name);
 
         checkArguments();
         createPlayerFile();
@@ -43,12 +40,12 @@ public class Player {
 
     public void stop() {
         isStop = true;
-        FilesUtils.tryDelete(playerFile);
+        tryDelete(playerFile);
     }
 
     private void createPlayerFile() {
         try {
-            FilesUtils.createDirectoryIfNotExist(playerFile.getParent());
+            createDirectoryIfNotExist(playerFile.getParent());
             Files.createFile(playerFile);
             Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
         } catch (IOException e) {
@@ -69,14 +66,7 @@ public class Player {
 
     public static void main(String[] args) {
         int tick = 500;
-
-        String name = (args.length > 0 && !args[0].isEmpty())
-                ? args[0]
-                : "player" + (System.currentTimeMillis() - 1738605400000L);
-        try {
-            new Player(name, tick).start();
-        } catch (Exception ex) {
-            System.out.println("Произошла ошибка: " + ex.getMessage());
-        }
+        new Player(generateUniqueName(args, "player"), tick)
+                .start();
     }
 }

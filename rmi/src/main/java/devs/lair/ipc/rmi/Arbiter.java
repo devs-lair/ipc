@@ -1,7 +1,6 @@
 package devs.lair.ipc.rmi;
 
 import devs.lair.ipc.rmi.utils.DirWatcher;
-import devs.lair.ipc.rmi.utils.FilesUtils;
 import devs.lair.ipc.rmi.utils.Move;
 
 import java.io.IOException;
@@ -10,12 +9,10 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.stream.Stream;
 
+import static devs.lair.ipc.rmi.utils.CommonUtils.*;
+
 public class Arbiter {
-
     private final int tick;
-    private final String FILE_SUFFIX = ".move";
-    private final String FILE_DIR = "players";
-
     private final BlockingQueue<String> players = new ArrayBlockingQueue<>(1024);
 
     private String playerOneName;
@@ -43,8 +40,7 @@ public class Arbiter {
             @Override
             public void onCreate(WatchEvent<Path> event) {
                 Path eventPath = event.context();
-                if (Files.isRegularFile(eventPath)
-                        && eventPath.getFileName().toString().contains(FILE_SUFFIX)) {
+                if (eventPath.getFileName().toString().contains(FILE_SUFFIX)) {
                     String playerName = getNameFromPath(eventPath);
 
                     // Случай, когда игрок быстро вернулся к жизни
@@ -158,7 +154,7 @@ public class Arbiter {
         }
 
         //Убиваем зомби игроков, которые есть, но не ходят
-        if (!FilesUtils.tryDelete(playerFile)) {
+        if (!tryDelete(playerFile)) {
             System.out.println("Не удалось удалить файл зомби игрока");
         }
 
@@ -174,7 +170,7 @@ public class Arbiter {
     }
 
     private void deletePlayersFile(String playerName) {
-        if (!FilesUtils.tryDelete(getPathFromName(playerName))) {
+        if (!tryDelete(getPathFromName(playerName))) {
             System.out.println("Не удалось удалить файл игрока");
         }
     }
@@ -197,14 +193,6 @@ public class Arbiter {
             throw new IllegalArgumentException("Тик должен быть строго больше нуля");
         }
         return tick;
-    }
-
-    private String getNameFromPath(Path path) {
-        return path.getFileName().toString().replace(FILE_SUFFIX, "");
-    }
-
-    private Path getPathFromName(String playerName) {
-        return Paths.get(FILE_DIR + "/" + playerName + FILE_SUFFIX);
     }
 
     private void closeWatcher() {
