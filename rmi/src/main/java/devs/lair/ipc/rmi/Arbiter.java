@@ -212,4 +212,9 @@ public class Arbiter {
             }
         }
     }
+
+    public static void main(String[] args) throws InterruptedException {
+        int tick = 1000;
+        new Arbiter(tick).start();
+    }
 }
