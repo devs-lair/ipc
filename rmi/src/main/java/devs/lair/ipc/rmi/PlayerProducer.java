@@ -9,9 +9,9 @@ public class PlayerProducer {
     private static final String MAIN_CLASS = "devs.lair.ipc.rmi.Player";
     private static final String[] COMMANDS = {"java", "-cp", CLASS_PATH, MAIN_CLASS};
 
-    private static int initialPlayerCount = 2;    //начальное количество игроков
-    private static int maxPlayerCount = 4;        //максимальное
-    private static int spawnPeriod = 2000;        //интервал производства
+    private static int initialPlayerCount = 4;    //начальное количество игроков
+    private static int maxPlayerCount = 10;       //максимальное
+    private static int spawnPeriod = 1000;        //интервал производства
     private static int currentCount = 1;
     private static boolean isStop = false;
 

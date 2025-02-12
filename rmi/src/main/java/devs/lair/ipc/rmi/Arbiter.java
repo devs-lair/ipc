@@ -1,64 +1,34 @@
 package devs.lair.ipc.rmi;
 
-import devs.lair.ipc.rmi.utils.DirWatcher;
+import devs.lair.ipc.rmi.utils.IPlayerProvider;
 import devs.lair.ipc.rmi.utils.Move;
 
 import java.io.IOException;
-import java.nio.file.*;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.stream.Stream;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
-import static devs.lair.ipc.rmi.utils.CommonUtils.*;
+import static devs.lair.ipc.rmi.utils.CommonUtils.getPathFromName;
+import static devs.lair.ipc.rmi.utils.CommonUtils.tryDelete;
 
 public class Arbiter {
     private final int tick;
-    private final BlockingQueue<String> players = new ArrayBlockingQueue<>(1024);
-
     private String playerOneName;
     private String playerTwoName;
-    private DirWatcher dirWatcher;
+    private IPlayerProvider playerProvider;
 
     public Arbiter(int tick) {
-        this.tick = checkTick(tick);
+        if (tick < 0) {
+            throw new IllegalArgumentException("Тик должен быть строго больше нуля");
+        }
+        this.tick = tick;
     }
 
     public void start() throws InterruptedException {
-        try (Stream<Path> playersFiles =
-                     Files.walk(Paths.get(FILE_DIR).toAbsolutePath(), 1)) {
-            players.addAll(playersFiles
-                    .filter(p -> Files.isRegularFile(p) && p.toString().contains(FILE_SUFFIX))
-                    .map(p -> getNameFromPath(p.getFileName()))
-                    .toList());
-
-        } catch (IOException e) {
-            throw new IllegalStateException("Ошибка, при получении списка файлов", e);
-        }
-
-        dirWatcher = new DirWatcher(FILE_DIR);
-        dirWatcher.addListener(new DirWatcher.DirWatcherListener() {
-            @Override
-            public void onCreate(WatchEvent<Path> event) {
-                Path eventPath = event.context();
-                if (eventPath.getFileName().toString().contains(FILE_SUFFIX)) {
-                    String playerName = getNameFromPath(eventPath);
-
-                    // Случай, когда игрок быстро вернулся к жизни
-                    if (!playerName.equals(playerOneName)
-                            && !playerName.equals(playerTwoName)) {
-                        players.add(playerName);
-                    }
-                }
-            }
-
-            @Override
-            public void onDelete(WatchEvent<Path> event, boolean isDirectory) {
-                String removedPlayerName = getNameFromPath(event.context());
-                players.remove(removedPlayerName);
-            }
-        });
-        dirWatcher.startWatch();
-
         int totalGamesCount = 1;
         int roundNumber = 1;
         int maxRound = 5;
@@ -114,15 +84,20 @@ public class Arbiter {
         }
     }
 
-    public void stop() {
-        clearPlayerFiles();
-        closeWatcher();
-    }
-
     private String getPlayerName() {
-        String playerName = players.poll();
-        return playerName != null && Files.exists(getPathFromName(playerName))
-                ? playerName : null;
+        try {
+            if (playerProvider == null) {
+                Registry registry = LocateRegistry.getRegistry();
+                playerProvider = (IPlayerProvider) registry.lookup(IPlayerProvider.class.getName());
+            }
+            return playerProvider.getPlayerName("arbiter");
+        } catch (RemoteException e) {
+            playerProvider = null;
+            System.out.println("Ошибка при получения хода игрока из PlayerProvider");
+        } catch (NullPointerException | NotBoundException e) {
+            System.out.println("Ошибка при получения сервиса PlayerProvider");
+        }
+        return null;
     }
 
     private Move readPlayerMove(String playerName) throws InterruptedException {
@@ -130,7 +105,7 @@ public class Arbiter {
         int maxAttempt = 10;
 
         Path playerFile = getPathFromName(playerName);
-        while (attempt < maxAttempt) {
+        while (attempt++ <= maxAttempt) {
             String playerMove = "";
             try {
                 if (Files.size(playerFile) == 0) {
@@ -143,6 +118,7 @@ public class Arbiter {
                 if (e instanceof NoSuchFileException) {
                     System.out.println("Нет файла для игрока " + playerName);
                 }
+                return null;
             } catch (IllegalArgumentException e) {
                 System.out.println("Не корректный ход игрока "
                         + playerName + ". Ход = " + playerMove);
@@ -154,25 +130,8 @@ public class Arbiter {
         }
 
         //Убиваем зомби игроков, которые есть, но не ходят
-        if (!tryDelete(playerFile)) {
-            System.out.println("Не удалось удалить файл зомби игрока");
-        }
-
+        deletePlayersFiles(playerName);
         return null;
-    }
-
-    private void deletePlayersFiles() {
-        deletePlayersFile(playerOneName);
-        deletePlayersFile(playerTwoName);
-
-        playerOneName = null;
-        playerTwoName = null;
-    }
-
-    private void deletePlayersFile(String playerName) {
-        if (!tryDelete(getPathFromName(playerName))) {
-            System.out.println("Не удалось удалить файл игрока");
-        }
     }
 
     private void printResult(Move playerOneMove, Move playerTwoMove) {
@@ -188,19 +147,17 @@ public class Arbiter {
                 : "Ход игрока " + playerName + " = " + playerOneMove);
     }
 
-    private int checkTick(int tick) {
-        if (tick < 0) {
-            throw new IllegalArgumentException("Тик должен быть строго больше нуля");
+    private void deletePlayersFiles(String... playerNames) {
+        for (String playerName : playerNames) {
+            if (playerName == null) continue;
+            if (!tryDelete(getPathFromName(playerName))) {
+                System.out.println("Не удалось удалить файл игрока" + playerName);
+            }
         }
-        return tick;
+        playerOneName = playerTwoName = null;
     }
 
-    private void closeWatcher() {
-        if (dirWatcher == null) return;
-        dirWatcher.close();
-    }
-
-    private void clearPlayerFiles(String ... playerNames) {
+    private void clearPlayerFiles(String... playerNames) {
         for (String playerName : playerNames) {
             if (playerName == null) continue;
             try {
