@@ -124,8 +124,6 @@ public class Arbiter {
                         + playerName + ". Ход = " + playerMove);
                 return null;
             }
-
-            attempt++;
             Thread.sleep(tick);
         }
 
