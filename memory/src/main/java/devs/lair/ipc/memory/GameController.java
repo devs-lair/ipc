@@ -35,12 +35,13 @@ public class GameController implements IPlayerProvider {
     }
 
     private void startWatch() throws IOException {
-        CommonUtils.createDirectoryIfNotExist(Paths.get(FILE_DIR));
+        Path playerDir = Paths.get(PLAYER_DIR);
+        CommonUtils.createDirectoryIfNotExist(playerDir);
 
         try (Stream<Path> playersFiles =
-                     Files.walk(Paths.get(FILE_DIR).toAbsolutePath(), 1)) {
+                     Files.walk(playerDir.toAbsolutePath(), 1)) {
             players.addAll(playersFiles
-                    .filter(p -> Files.isRegularFile(p) && p.toString().contains(FILE_SUFFIX))
+                    .filter(p -> Files.isRegularFile(p) && p.toString().contains(PLAYER_FILE_SUFFIX))
                     .map(p -> getNameFromPath(p.getFileName()))
                     .toList());
 
@@ -48,12 +49,12 @@ public class GameController implements IPlayerProvider {
             throw new IllegalStateException("Ошибка, при получении списка файлов", e);
         }
 
-        dirWatcher = new DirWatcher(FILE_DIR);
+        dirWatcher = new DirWatcher(PLAYER_DIR);
         dirWatcher.addListener(new DirWatcher.DirWatcherListener() {
             @Override
             public void onCreate(WatchEvent<Path> event) {
                 Path eventPath = event.context();
-                if (eventPath.getFileName().toString().contains(FILE_SUFFIX)) {
+                if (eventPath.getFileName().toString().contains(PLAYER_FILE_SUFFIX)) {
                     String playerName = getNameFromPath(eventPath);
                     players.add(playerName);
                 }

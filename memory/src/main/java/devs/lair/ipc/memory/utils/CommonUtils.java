@@ -6,8 +6,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class CommonUtils {
-    public static final String FILE_SUFFIX = ".move";
-    public static final String FILE_DIR = "players";
+    public static final String PLAYER_FILE_SUFFIX = ".move";
+    public static final String PLAYER_DIR = "players";
+    public static final String CONFIG_DIR = "config";
+    public static final String CONFIG_FILE = "config.properties";
+    public static final String MEMORY_CONFIG_FILE = "memory.config";
 
     private CommonUtils() {
     }
@@ -28,11 +31,11 @@ public class CommonUtils {
     }
 
     public static String getNameFromPath(Path path) {
-        return path.getFileName().toString().replace(FILE_SUFFIX, "");
+        return path.getFileName().toString().replace(PLAYER_FILE_SUFFIX, "");
     }
 
     public static Path getPathFromName(String playerName) {
-        return Paths.get(FILE_DIR + "/" + playerName + FILE_SUFFIX);
+        return Paths.get(PLAYER_DIR + "/" + playerName + PLAYER_FILE_SUFFIX);
     }
 
     public static String generateUniqueName(String[] args, String prefix) {

@@ -156,11 +156,58 @@ public class DirWatcher implements AutoCloseable {
         }
     }
 
+    public void join() {
+        try {
+            watchedThread.join();
+        } catch (InterruptedException e) {
+            throw new IllegalStateException("Был прерван метод join");
+        }
+    }
+
     public void addListener(DirWatcherListener listener) {
         if (listener == null) {
             throw new IllegalArgumentException("Передан null");
         }
         listeners.add(listener);
+    }
+
+    public void addOnModifyListener(OnEventCallback onEventCallback) {
+        if (onEventCallback == null) {
+            throw new IllegalArgumentException("Передан null");
+        }
+
+        listeners.add(new DirWatcherListener() {
+            @Override
+            public void onModify(WatchEvent<Path> event) {
+                onEventCallback.onEvent(event);
+            }
+        });
+    }
+
+    public void addOnCreateListener(OnEventCallback onEventCallback) {
+        if (onEventCallback == null) {
+            throw new IllegalArgumentException("Передан null");
+        }
+
+        listeners.add(new DirWatcherListener() {
+            @Override
+            public void onCreate(WatchEvent<Path> event) {
+                onEventCallback.onEvent(event);
+            }
+        });
+    }
+
+    public void addOnDeleteListener(OnEventCallback onEventCallback) {
+        if (onEventCallback == null) {
+            throw new IllegalArgumentException("Передан null");
+        }
+
+        listeners.add(new DirWatcherListener() {
+            @Override
+            public void onDelete(WatchEvent<Path> event, boolean isDirectory) {
+                onEventCallback.onEvent(event);
+            }
+        });
     }
 
     public boolean removeListener(DirWatcherListener listener) {
@@ -203,6 +250,10 @@ public class DirWatcher implements AutoCloseable {
     @SuppressWarnings("unchecked")
     static WatchEvent<Path> cast(WatchEvent<?> event) {
         return (WatchEvent<Path>) event;
+    }
+
+    public interface OnEventCallback {
+        void onEvent(WatchEvent<Path> event);
     }
 
     public interface DirWatcherListener {
