@@ -1,6 +1,6 @@
 package devs.lair.ipc.memory;
 
-
+import devs.lair.ipc.memory.service.ConfigProvider;
 import devs.lair.ipc.memory.utils.Move;
 
 import java.io.IOException;
@@ -13,17 +13,20 @@ import static devs.lair.ipc.memory.utils.CommonUtils.*;
 public class Player {
     private final String name;
     private final Path playerFile;
-    private final int tick;
+    private final ConfigProvider configProvider;
 
     private boolean isStop = false;
 
-    public Player(String name, int tick) {
-        this.name = name;
-        this.tick = tick;
-        this.playerFile = getPathFromName(name);
+    public Player(String name) {
+        if (name == null || name.isEmpty()) {
+            throw new IllegalArgumentException("Не верное имя!");
+        }
 
-        checkArguments();
+        this.name = name;
+        this.playerFile = getPathFromName(name);
         createPlayerFile();
+
+        this.configProvider = new ConfigProvider();
     }
 
     public void start() {
@@ -32,7 +35,8 @@ public class Player {
                 if (Files.size(playerFile) == 0) {
                     Files.write(playerFile, Move.getRandomMoveBytes());
                 }
-                Thread.sleep(tick);
+                Thread.sleep(configProvider.getPlayerTick());
+                System.out.println(configProvider.getPlayerTick());
             } catch (InterruptedException | IOException e) {
                 break;
             }
@@ -41,6 +45,7 @@ public class Player {
 
     public void stop() {
         isStop = true;
+        configProvider.stop();
         tryDelete(playerFile);
     }
 
@@ -56,18 +61,7 @@ public class Player {
         }
     }
 
-    private void checkArguments() {
-        if (name == null || name.isEmpty()) {
-            throw new IllegalArgumentException("Не верное имя!");
-        }
-        if (tick < 0) {
-            throw new IllegalArgumentException("Тик должен быть строго больше нуля");
-        }
-    }
-
     public static void main(String[] args) {
-        int tick = 500;
-        new Player(generateUniqueName(args, "player"), tick)
-                .start();
+        new Player(generateUniqueName(args, "player")).start();
     }
 }
