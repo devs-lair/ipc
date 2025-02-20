@@ -8,7 +8,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static devs.lair.ipc.balancer.utils.CommonUtils.*;
+import static devs.lair.ipc.balancer.utils.Utils.*;
 
 public class Player {
     private final String name;

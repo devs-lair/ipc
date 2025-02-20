@@ -9,7 +9,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.WatchEvent;
 
-import static devs.lair.ipc.balancer.utils.CommonUtils.*;
+import static devs.lair.ipc.balancer.utils.Constants.*;
+import static devs.lair.ipc.balancer.utils.Utils.tryDelete;
 import static java.nio.file.StandardOpenOption.*;
 
 public class ConfigLoader {

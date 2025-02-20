@@ -1,9 +1,9 @@
 package devs.lair.ipc.balancer;
 
 
-import devs.lair.ipc.balancer.utils.CommonUtils;
 import devs.lair.ipc.balancer.utils.DirWatcher;
 import devs.lair.ipc.balancer.utils.IPlayerProvider;
+import devs.lair.ipc.balancer.utils.Utils;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -20,7 +20,10 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.stream.Stream;
 
-import static devs.lair.ipc.balancer.utils.CommonUtils.*;
+import static devs.lair.ipc.balancer.utils.Constants.PLAYER_DIR;
+import static devs.lair.ipc.balancer.utils.Constants.PLAYER_FILE_SUFFIX;
+import static devs.lair.ipc.balancer.utils.Utils.getNameFromPath;
+import static devs.lair.ipc.balancer.utils.Utils.getPathFromName;
 
 public class GameController implements IPlayerProvider {
 
@@ -36,7 +39,7 @@ public class GameController implements IPlayerProvider {
 
     private void startWatch() throws IOException {
         Path playerDir = Paths.get(PLAYER_DIR);
-        CommonUtils.createDirectoryIfNotExist(playerDir);
+        Utils.createDirectoryIfNotExist(playerDir);
 
         try (Stream<Path> playersFiles =
                      Files.walk(playerDir.toAbsolutePath(), 1)) {

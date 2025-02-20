@@ -7,7 +7,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.util.Properties;
 
-import static devs.lair.ipc.balancer.utils.CommonUtils.*;
+import static devs.lair.ipc.balancer.utils.Constants.*;
 import static java.nio.file.StandardOpenOption.READ;
 
 public class ConfigProvider {

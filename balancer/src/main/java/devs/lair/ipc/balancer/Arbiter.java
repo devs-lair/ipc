@@ -13,8 +13,8 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
-import static devs.lair.ipc.balancer.utils.CommonUtils.getPathFromName;
-import static devs.lair.ipc.balancer.utils.CommonUtils.tryDelete;
+import static devs.lair.ipc.balancer.utils.Utils.getPathFromName;
+import static devs.lair.ipc.balancer.utils.Utils.tryDelete;
 
 
 public class Arbiter {
