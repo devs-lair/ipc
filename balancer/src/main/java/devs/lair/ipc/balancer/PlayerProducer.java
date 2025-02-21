@@ -1,39 +1,45 @@
 package devs.lair.ipc.balancer;
 
+import devs.lair.ipc.balancer.service.ConfigProvider;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
+import static devs.lair.ipc.balancer.utils.Constants.INITIAL_PLAYER_COUNT_KEY;
+
 public class PlayerProducer {
-    private static final String CLASS_PATH = "/home/devslair/prjs/ipc/rmi/target/classes";
-    private static final String MAIN_CLASS = "devs.lair.ipc.rmi.Player";
+    private static final String CLASS_PATH = "/home/devslair/prjs/ipc/balancer/target/classes";
+    private static final String MAIN_CLASS = "devs.lair.ipc.balancer.Player";
     private static final String[] COMMANDS = {"java", "-cp", CLASS_PATH, MAIN_CLASS};
 
-    private static int initialPlayerCount = 4;    //начальное количество игроков
-    private static int maxPlayerCount = 10;       //максимальное
-    private static int spawnPeriod = 1000;        //интервал производства
-    private static int currentCount = 1;
-    private static boolean isStop = false;
+    private final Set<Process> players = new HashSet<>();
+    private final ConfigProvider configProvider;
 
-    private static final Set<Process> players = new HashSet<>();
+    private boolean isStop = false;
 
-    public static void main(String[] args) {
-        extractArgs(args);
+    public PlayerProducer() {
+        configProvider = new ConfigProvider();
+    }
 
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            isStop = true;
-            players.forEach(Process::destroy);
-        }));
+    public void startProduce() {
+        Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
 
+        configProvider.init();
+        int initialPlayerCount = configProvider.getInt(INITIAL_PLAYER_COUNT_KEY,
+                2, value -> value >=0);
+
+        int currentCount = 1;
         try {
             while (!isStop) {
-                if (currentCount < initialPlayerCount || currentCount <= maxPlayerCount) {
+                if (currentCount < initialPlayerCount
+                        || currentCount <= configProvider.getMaxPlayerCount()) {
                     players.add(new ProcessBuilder(COMMANDS).start());
                     System.out.println("Стартовал процесс игрока с номером " + currentCount);
                     currentCount++;
                 }
                 Thread.sleep(currentCount > initialPlayerCount
-                        ? spawnPeriod : 10);
+                        ? configProvider.getSpawnPeriod() : 10);
             }
         } catch (IOException e) {
             System.out.println("При создании процесса произошла ошибка"); // от start()
@@ -42,19 +48,13 @@ public class PlayerProducer {
         }
     }
 
-    private static void extractArgs(String[] args) {
-        try {
-            initialPlayerCount = ifNegativeThrow(Integer.parseInt(args[0]));
-            maxPlayerCount = ifNegativeThrow(Integer.parseInt(args[1]));
-            spawnPeriod = ifNegativeThrow(Integer.parseInt(args[2]));
-        } catch (IndexOutOfBoundsException ignored) {
-        }
+    public void stop() {
+        isStop = true;
+        configProvider.stop();
+        players.forEach(Process::destroy);
     }
 
-    private static int ifNegativeThrow(int number) {
-        if (number < 0) {
-            throw new IllegalArgumentException("Значение должно быть положительным, передано " + number);
-        }
-        return number;
+    public static void main(String[] args) {
+        new PlayerProducer().startProduce();
     }
 }

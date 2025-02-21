@@ -9,6 +9,7 @@ public class Constants {
     public static final String CONFIG_DIR = "config";
     public static final String CONFIG_FILE = "config.properties";
     public static final String MEMORY_CONFIG_FILE = "memory.config";
+    public static final String INITIAL_PLAYER_COUNT_KEY = "producer.initialPlayerCount";
     public static final int MEMORY_SIZE = 1000;
     public static final int DEFAULT_POLL_TIMEOUT = 1000;
 
