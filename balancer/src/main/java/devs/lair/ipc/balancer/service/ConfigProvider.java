@@ -139,7 +139,8 @@ public class ConfigProvider implements AutoCloseable {
         if (updating) {
             throw new IllegalStateException("Идет обновление. Приходите позже");
         }
-        return props.getProperty(propertyName);
+        String property = props.getProperty(propertyName);
+        return Utils.isNullOrEmpty(property) ? null : property.trim();
     }
 
     public int getPlayerTick() {

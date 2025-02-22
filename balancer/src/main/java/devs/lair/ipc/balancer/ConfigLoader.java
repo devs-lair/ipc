@@ -13,7 +13,7 @@ import static devs.lair.ipc.balancer.utils.Constants.*;
 import static devs.lair.ipc.balancer.utils.Utils.tryDelete;
 import static java.nio.file.StandardOpenOption.*;
 
-public class ConfigLoader {
+public class ConfigLoader implements AutoCloseable {
     private MappedByteBuffer memory;
     private DirWatcher watcher;
 
@@ -42,10 +42,14 @@ public class ConfigLoader {
             throw new IllegalStateException("Не удалось создать область в памяти " + e.getMessage());
         }
 
-        Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
+        Runtime.getRuntime().addShutdownHook(new Thread(this::close));
     }
 
-    private void loadFileToMemory() {
+    public void loadFileToMemory() {
+        if (memory == null) {
+            createMemoryBuffer();
+        }
+
         try {
             memory.put((byte) -1); // block read
             Thread.sleep(25); // wait others
@@ -81,7 +85,7 @@ public class ConfigLoader {
         }
     }
 
-    private void stop() {
+    public void close() {
         if (!tryDelete(MEMORY_CONFIG_PATH)) {
             System.out.println("Ну удалось удалить файл памяти");
         }
@@ -92,6 +96,8 @@ public class ConfigLoader {
     }
 
     public static void main(String[] args) {
-        new ConfigLoader().load();
+        try (ConfigLoader cl = new ConfigLoader()) {
+            cl.load();
+        }
     }
 }
