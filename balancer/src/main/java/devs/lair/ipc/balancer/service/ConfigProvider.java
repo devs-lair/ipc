@@ -1,5 +1,7 @@
 package devs.lair.ipc.balancer.service;
 
+import devs.lair.ipc.balancer.utils.Utils;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
@@ -11,34 +13,31 @@ import java.util.function.Predicate;
 import static devs.lair.ipc.balancer.utils.Constants.*;
 import static java.nio.file.StandardOpenOption.READ;
 
-public class ConfigProvider {
+public class ConfigProvider implements AutoCloseable {
     private final Properties props = new Properties();
-    private final int pollTimeout;
 
     private MappedByteBuffer memory;
     private Thread watchThread;
+
+    //Controls
+    private final int pollTimeout;
+    private byte currentVersion = 0;
+    private boolean isStop = false;
+    private boolean updating = false;
 
     //Params
     private int playerTick = 500;
     private int arbiterTick = 500;
     private int maxPlayerCount = 4;
     private int spawnPeriod = 1000;
-
-    //Controls
-    private byte currentVersion = 0;
-    private boolean isStop = false;
-    private boolean updating = false;
+    private int maxRound = 5;
 
     public ConfigProvider() {
         this(DEFAULT_POLL_TIMEOUT);
     }
 
     public ConfigProvider(int pollTimeout) {
-        if (pollTimeout < 0) {
-            throw new IllegalArgumentException("Таймаут должен быть строго больше нуля");
-        }
-
-        this.pollTimeout = pollTimeout;
+        this.pollTimeout = Utils.checkInt(pollTimeout, p -> p > 0);
     }
 
     public void init() {
@@ -51,19 +50,20 @@ public class ConfigProvider {
             if (Files.exists(MEMORY_CONFIG_PATH)) {
                 if (memory == null) initMemoryBuffer();
 
-                if (memory != null) {
-                    byte configVersion = memory.get(0);
-                    if (configVersion != -1 && configVersion > currentVersion) {
-                        byte[] configBytes = new byte[999];
-                        currentVersion = configVersion;
-                        memory.get(1, configBytes);
-                        readConfig(configBytes);
-                    }
+                if (memory.get(0) > currentVersion) {
+                    currentVersion = memory.get(0);
+                    readConfig();
                 }
             }
         } catch (Exception e) {
             memory = null;
             System.out.println("Ошибка при чтении конфига из памяти: " + e.getMessage());
+        }
+    }
+
+    private void initMemoryBuffer() throws IOException {
+        try (FileChannel fc = (FileChannel) Files.newByteChannel(MEMORY_CONFIG_PATH, READ)) {
+            memory = fc.map(FileChannel.MapMode.READ_ONLY, 0, MEMORY_SIZE);
         }
     }
 
@@ -81,40 +81,31 @@ public class ConfigProvider {
         watchThread.start();
     }
 
-    public void stop() {
-        isStop = true;
-        if (watchThread != null) {
-            watchThread.interrupt();
-        }
+    private void readConfig() {
+        reloadProperties();
+
+        //Player params
+        playerTick = readPositiveInt("player.tick", playerTick);
+
+        //Arbiter params
+        arbiterTick = readPositiveInt("arbiter.tick", arbiterTick);
+        maxRound = readPositiveInt("arbiter.maxRound", maxRound);
+
+        //Producer params
+        maxPlayerCount = readPositiveInt("producer.maxPlayers", maxPlayerCount);
+        spawnPeriod = readPositiveInt("producer.spawnPeriod", spawnPeriod);
     }
 
-    private void initMemoryBuffer() {
-        try (FileChannel fc = (FileChannel) Files.newByteChannel(MEMORY_CONFIG_PATH, READ)) {
-            memory = fc.map(FileChannel.MapMode.READ_ONLY, 0, MEMORY_SIZE);
-        } catch (IOException e) {
-            System.out.println("Не удалось создать буфер памяти " + e.getMessage());
-        }
-    }
-
-    private void readConfig(byte[] configBytes) {
+    private void reloadProperties() {
         try {
+            final byte[] configBytes = new byte[999];
+            memory.get(1, configBytes);
+
             updating = true;
             props.clear();
             props.load(new ByteArrayInputStream(configBytes));
-
-            //Player params
-            playerTick = readPositiveInt("player.tick", playerTick);
-
-            //Arbiter params
-            arbiterTick = readPositiveInt("arbiter.tick", arbiterTick);
-
-            //Producer params
-            maxPlayerCount = readPositiveInt("producer.maxPlayers", maxPlayerCount);
-            spawnPeriod = readPositiveInt("producer.spawnPeriod", spawnPeriod);
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.out.println("Не удалось прочитать конфиг байтов памяти ");
-        } catch (NumberFormatException e) {
-            System.out.println("Ошибка парсинга параметра конфига");
         } finally {
             updating = false;
         }
@@ -124,31 +115,32 @@ public class ConfigProvider {
         return getInt(propertyName, defaultValue, value -> value > 0);
     }
 
-    public String getProperty(String propertyName) throws IllegalStateException {
-        if (!updating) {
-            return props.getProperty(propertyName);
+    @Override
+    public void close() {
+        isStop = true;
+        if (watchThread != null) {
+            watchThread.interrupt();
         }
-        throw new IllegalStateException("Идет обновление. Приходите позже");
-    }
-
-    public int getInt(String propertyName, int defaultValue) {
-        return getInt(propertyName, defaultValue, null);
     }
 
     public int getInt(String propertyName, int defaultValue, Predicate<Integer> checker) {
         try {
             String propertyValue = getProperty(propertyName);
-            if (propertyValue != null && !propertyValue.isEmpty()) {
-                int invValue = Integer.parseInt(propertyValue);
-                if (checker != null && checker.test(invValue)) {
-                    return invValue;
-                }
-            }
-        } catch (Exception ignored) {
+            return Utils.isNullOrEmpty(propertyValue)
+                    ? defaultValue
+                    : Utils.checkInt(Integer.parseInt(propertyValue), checker);
+        } catch (Exception e) {
+            System.out.printf("Ошибка парсинга %s %s \n", propertyName, e.getMessage());
+            return defaultValue;
         }
-        return defaultValue;
     }
 
+    public String getProperty(String propertyName) throws IllegalStateException {
+        if (updating) {
+            throw new IllegalStateException("Идет обновление. Приходите позже");
+        }
+        return props.getProperty(propertyName);
+    }
 
     public int getPlayerTick() {
         return playerTick;
@@ -164,5 +156,9 @@ public class ConfigProvider {
 
     public long getSpawnPeriod() {
         return spawnPeriod;
+    }
+
+    public int getMaxRound() {
+        return maxRound;
     }
 }

@@ -53,7 +53,6 @@ class UtilsTest {
     }
 
 
-
     @Test
     @DisplayName("Get name from path")
     void getNameFromPathTest() {
@@ -101,14 +100,31 @@ class UtilsTest {
     @Test
     @DisplayName("On null throw Exception")
     void onNullTest() {
-        assertThrows(NullPointerException.class, ()-> Utils.tryDelete(null));
-        assertThrows(NullPointerException.class, ()-> Utils.createDirectoryIfNotExist(null));
-        assertThrows(NullPointerException.class, ()-> Utils.getNameFromPath(null));
-        assertThrows(NullPointerException.class, ()-> Utils.getPathFromName(null));
-        assertThrows(NullPointerException.class, ()-> Utils.generateUniqueName(null, "PREFIX"));
-        assertThrows(NullPointerException.class, ()-> Utils.generateUniqueName(new String[0], null));
-        assertThrows(NullPointerException.class, ()-> Utils.generateUniqueName(null, null));
-        assertThrows(IllegalArgumentException.class, ()-> Utils.generateUniqueName(new String[0], ""));
+        assertThrows(NullPointerException.class, () -> Utils.tryDelete(null));
+        assertThrows(NullPointerException.class, () -> Utils.createDirectoryIfNotExist(null));
+        assertThrows(NullPointerException.class, () -> Utils.getNameFromPath(null));
+        assertThrows(NullPointerException.class, () -> Utils.getPathFromName(null));
+        assertThrows(NullPointerException.class, () -> Utils.generateUniqueName(null, "PREFIX"));
+        assertThrows(NullPointerException.class, () -> Utils.generateUniqueName(new String[0], null));
+        assertThrows(NullPointerException.class, () -> Utils.generateUniqueName(null, null));
+        assertThrows(IllegalArgumentException.class, () -> Utils.generateUniqueName(new String[0], ""));
+    }
 
+    @Test
+    @DisplayName("Check int")
+    void checkIntTest() {
+        assertDoesNotThrow(() -> Utils.checkInt(5, v -> v > 0));
+
+        int zero = Utils.checkInt(0, v -> v >= 0);
+        assertThat(zero).isEqualTo(0);
+        assertThrows(IllegalArgumentException.class, ()->Utils.checkInt(-1, v -> v > 0));
+    }
+
+    @Test
+    @DisplayName("Is null or empty")
+    void isNullOrEmptyTest() {
+        assertThat(Utils.isNullOrEmpty(null)).isTrue();
+        assertThat(Utils.isNullOrEmpty("")).isTrue();
+        assertThat(Utils.isNullOrEmpty("STRING")).isFalse();
     }
 }

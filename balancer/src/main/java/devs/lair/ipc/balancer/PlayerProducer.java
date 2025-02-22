@@ -50,7 +50,7 @@ public class PlayerProducer {
 
     public void stop() {
         isStop = true;
-        configProvider.stop();
+        configProvider.close();
         players.forEach(Process::destroy);
     }
 

@@ -45,7 +45,7 @@ public class Player {
 
     public void stop() {
         isStop = true;
-        configProvider.stop();
+        configProvider.close();
         tryDelete(playerFile);
     }
 

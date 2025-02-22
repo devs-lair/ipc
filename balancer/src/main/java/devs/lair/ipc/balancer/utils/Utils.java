@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 import static devs.lair.ipc.balancer.utils.Constants.PLAYER_DIR;
 import static devs.lair.ipc.balancer.utils.Constants.PLAYER_FILE_SUFFIX;
@@ -47,5 +48,16 @@ public class Utils {
         return (args.length > 0 && !args[0].isEmpty())
                 ? args[0]
                 : prefix + (System.currentTimeMillis() - 1738605400000L);
+    }
+
+    public static int checkInt(int intValue, Predicate<Integer> predicate) {
+        if (!predicate.test(intValue)) {
+            throw new IllegalArgumentException("Аргумент не прошел проверку: " + intValue);
+        }
+        return intValue;
+    }
+
+    public static boolean isNullOrEmpty(String s) {
+        return s == null || s.isEmpty();
     }
 }
