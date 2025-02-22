@@ -3,6 +3,7 @@ package devs.lair.ipc.balancer;
 import devs.lair.ipc.balancer.utils.DirWatcher;
 
 import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -14,11 +15,11 @@ import static devs.lair.ipc.balancer.utils.Utils.tryDelete;
 import static java.nio.file.StandardOpenOption.*;
 
 public class ConfigLoader implements AutoCloseable {
+    private static ConfigLoader cl; //only for tests
+
     private MappedByteBuffer memory;
     private DirWatcher watcher;
-
     private byte version = 0;
-    private byte modCount = 0;
 
     public ConfigLoader() {
         if (!Files.exists(CONFIG_PATH)) {
@@ -27,7 +28,7 @@ public class ConfigLoader implements AutoCloseable {
         }
     }
 
-    public void load() {
+    public void init() {
         createMemoryBuffer();
         loadFileToMemory();
         watchByConfigFile();
@@ -52,14 +53,15 @@ public class ConfigLoader implements AutoCloseable {
 
         try {
             memory.put((byte) -1); // block read
-            Thread.sleep(25); // wait others
+            Thread.sleep(WAIT_OTHERS_TIMEOUT); // wait others
 
             memory.clear();
             memory.put(1, readConfigFile());
             memory.put(0, ++version);
-        } catch (IOException e) {
-            throw new IllegalStateException("Ну удалось записать файл в память" + e.getMessage());
+        } catch (IOException | BufferOverflowException e) {
+            throw new IllegalStateException("Ну удалось записать файл в память " + e.getMessage());
         } catch (InterruptedException ignored) {
+            throw new IllegalStateException("Основной поток был прерван");
         }
     }
 
@@ -78,9 +80,7 @@ public class ConfigLoader implements AutoCloseable {
     }
 
     private void onModify(WatchEvent<Path> event) {
-        if (event.context().getFileName().toString().equals(CONFIG_FILE)
-                && ++modCount == 2) {
-            modCount = 0;
+        if (event.context().getFileName().toString().equals(CONFIG_FILE)) {
             loadFileToMemory();
         }
     }
@@ -96,8 +96,8 @@ public class ConfigLoader implements AutoCloseable {
     }
 
     public static void main(String[] args) {
-        try (ConfigLoader cl = new ConfigLoader()) {
-            cl.load();
-        }
+        cl = new ConfigLoader();
+        cl.init();
+        cl.close();
     }
 }

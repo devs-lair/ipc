@@ -13,7 +13,9 @@ public class Constants {
     public static final String MAX_ATTEMPT_KEY = "arbiter.maxAttempt";
     public static final int MEMORY_SIZE = 1000;
 
+    //Not final for tests
     public static int DEFAULT_POLL_TIMEOUT = 1000;
+    public static int WAIT_OTHERS_TIMEOUT = 25;
     public static Path CONFIG_PATH = Paths.get(CONFIG_DIR + "/" + CONFIG_FILE);
     public static Path MEMORY_CONFIG_PATH = Paths.get(CONFIG_DIR + "/" + MEMORY_CONFIG_FILE);
 
