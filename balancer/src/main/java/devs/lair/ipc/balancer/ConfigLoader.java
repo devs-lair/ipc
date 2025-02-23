@@ -15,10 +15,9 @@ import static devs.lair.ipc.balancer.utils.Utils.tryDelete;
 import static java.nio.file.StandardOpenOption.*;
 
 public class ConfigLoader implements AutoCloseable {
-    private static ConfigLoader cl; //only for tests
-
     private MappedByteBuffer memory;
     private DirWatcher watcher;
+
     private byte version = 0;
 
     public ConfigLoader() {
@@ -95,6 +94,7 @@ public class ConfigLoader implements AutoCloseable {
         }
     }
 
+    private static ConfigLoader cl; //only for tests
     public static void main(String[] args) {
         cl = new ConfigLoader();
         cl.init();

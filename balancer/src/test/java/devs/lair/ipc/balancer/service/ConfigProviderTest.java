@@ -4,6 +4,7 @@ import devs.lair.ipc.balancer.ConfigLoader;
 import devs.lair.ipc.balancer.utils.Constants;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.lang3.reflect.MethodUtils;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.*;
 import org.mockito.Mockito;
 
@@ -13,6 +14,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.MappedByteBuffer;
 import java.nio.file.Paths;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 import static devs.lair.ipc.balancer.utils.Constants.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,10 +62,10 @@ class ConfigProviderTest {
     @DisplayName("Positive poll timeout")
     void positivePollTimeout() {
         assertDoesNotThrow(() -> {
-            ConfigProvider configProvider = new ConfigProvider(100);
-            int pollTimeout = (int) FieldUtils.readField(configProvider, "pollTimeout", true);
-            assertThat(pollTimeout).isEqualTo(100);
-            configProvider.close();
+            try (ConfigProvider configProvider = new ConfigProvider(100)) {
+                int pollTimeout = (int) FieldUtils.readField(configProvider, "pollTimeout", true);
+                assertThat(pollTimeout).isEqualTo(100);
+            }
         });
     }
 
@@ -98,36 +100,31 @@ class ConfigProviderTest {
     @Test
     @DisplayName("Load config from file")
     void loadConfigWithConfigFile() {
-        ConfigLoader configLoader = new ConfigLoader();
-        configLoader.loadFileToMemory();
+        try (ConfigLoader configLoader = new ConfigLoader();
+             ConfigProvider configProvider = new ConfigProvider()) {
+            configLoader.loadFileToMemory();
+            configProvider.loadConfig();
 
-        ConfigProvider configProvider = new ConfigProvider();
-        configProvider.loadConfig();
-
-        assertThat(configProvider.getProperty(INITIAL_PLAYER_COUNT_KEY)).isNotNull();
-        assertThat(configProvider.getProperty(Constants.MAX_ATTEMPT_KEY)).isNotNull();
-
-        configProvider.close();
-        configLoader.close();
+            assertThat(configProvider.getProperty(INITIAL_PLAYER_COUNT_KEY)).isNotNull();
+            assertThat(configProvider.getProperty(Constants.MAX_ATTEMPT_KEY)).isNotNull();
+        }
     }
 
     @Test
     @DisplayName("Catch errors on loadConfig")
     void catchErrorsOnLoadConfig() throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        ConfigLoader configLoader = new ConfigLoader();
-        configLoader.loadFileToMemory();
+        try (ConfigLoader configLoader = new ConfigLoader();
+             ConfigProvider configProvider = new ConfigProvider()) {
+            configLoader.loadFileToMemory();
 
-        ConfigProvider configProvider = new ConfigProvider();
-        MethodUtils.invokeMethod(configProvider, true, "initMemoryBuffer");
+            MethodUtils.invokeMethod(configProvider, true, "initMemoryBuffer");
+            MappedByteBuffer memory = (MappedByteBuffer) FieldUtils
+                    .readField(configProvider, "memory", true);
+            memory.limit(0);
 
-        MappedByteBuffer memory = (MappedByteBuffer) FieldUtils.readField(configProvider, "memory", true);
-        memory.limit(0);
-
-        assertDoesNotThrow(configProvider::loadConfig);
-        assertThat(configProvider.getPlayerTick()).isPositive();
-
-        configProvider.close();
-        configLoader.close();
+            assertDoesNotThrow(configProvider::loadConfig);
+            assertThat(configProvider.getPlayerTick()).isPositive();
+        }
     }
 
     @Test
@@ -136,17 +133,16 @@ class ConfigProviderTest {
         Properties mockProperties = mock(Properties.class);
         doThrow(new IOException()).when(mockProperties).load(any(InputStream.class));
 
-        ConfigLoader configLoader = new ConfigLoader();
-        configLoader.loadFileToMemory();
+        try (ConfigLoader configLoader = new ConfigLoader();
+             ConfigProvider configProvider = new ConfigProvider()) {
+            configLoader.loadFileToMemory();
 
-        ConfigProvider configProvider = new ConfigProvider();
-        FieldUtils.writeField(configProvider, "props", mockProperties, true);
+            FieldUtils.writeField(configProvider, "props",
+                    mockProperties, true);
 
-        assertDoesNotThrow(configProvider::loadConfig);
-        assertThat(configProvider.getPlayerTick()).isPositive();
-
-        configProvider.close();
-        configLoader.close();
+            assertDoesNotThrow(configProvider::loadConfig);
+            assertThat(configProvider.getPlayerTick()).isPositive();
+        }
     }
 
     @Test
@@ -173,23 +169,21 @@ class ConfigProviderTest {
     @Test
     @DisplayName("Negative in props file")
     void negativeInProps() throws IllegalAccessException {
-        ConfigLoader configLoader = new ConfigLoader();
-        configLoader.loadFileToMemory();
+        try (ConfigLoader configLoader = new ConfigLoader();
+             ConfigProvider configProvider = new ConfigProvider()) {
+            configLoader.loadFileToMemory();
 
-        Properties mockProperties = mock(Properties.class);
-        when(mockProperties.getProperty(any())).thenReturn("-10");
+            Properties mockProperties = mock(Properties.class);
+            when(mockProperties.getProperty(any())).thenReturn("-10");
+            FieldUtils.writeField(configProvider, "props", mockProperties, true);
 
-        ConfigProvider configProvider = new ConfigProvider();
-        FieldUtils.writeField(configProvider, "props", mockProperties, true);
-
-        assertDoesNotThrow(configProvider::loadConfig);
-        configLoader.close();
-        configProvider.close();
+            assertDoesNotThrow(configProvider::loadConfig);
+        }
     }
 
     @Test
     @DisplayName("Start watch without loader")
-    void startWatchWithoutLoader() throws IllegalAccessException, InterruptedException {
+    void startWatchWithoutLoader() throws IllegalAccessException {
         ConfigProvider configProvider = Mockito.spy(ConfigProvider.class);
 
         new Thread(configProvider::init).start();
@@ -199,39 +193,47 @@ class ConfigProviderTest {
         assertThat(watchThread).isNotNull();
         assertThat(watchThread.isAlive()).isTrue();
 
-        verify(configProvider, timeout(3L * DEFAULT_POLL_TIMEOUT).times(3)).loadConfig();
+        verify(configProvider, timeout(2L * DEFAULT_POLL_TIMEOUT).times(3)).loadConfig();
 
         configProvider.close();
-        Thread.sleep(2L * DEFAULT_POLL_TIMEOUT);
-        assertThat(readIsStop(configProvider)).isTrue();
+
+        Awaitility.await()
+                .timeout(25, TimeUnit.MILLISECONDS)
+                .pollDelay(5, TimeUnit.MILLISECONDS)
+                .until(() -> !watchThread.isAlive());
+
         assertThat(watchThread.isAlive()).isFalse();
+        assertThat(readIsStop(configProvider)).isTrue();
     }
 
     @Test
     @DisplayName("Start watch with loader")
     void startWatchWithLoader() {
-        ConfigProvider configProvider = Mockito.spy(ConfigProvider.class);
-        ConfigLoader configLoader = new ConfigLoader();
-        configLoader.loadFileToMemory();
+        try (ConfigLoader configLoader = new ConfigLoader();
+             ConfigProvider configProvider = Mockito.spy(ConfigProvider.class)) {
+            configLoader.loadFileToMemory();
 
-        new Thread(configProvider::init).start();
-        verify(configProvider, timeout(2L * DEFAULT_POLL_TIMEOUT).times(2)).loadConfig();
-
-        configProvider.close();
+            new Thread(configProvider::init).start();
+            verify(configProvider, timeout(2L * DEFAULT_POLL_TIMEOUT)
+                    .times(2)).loadConfig();
+        }
     }
 
     @Test
     @DisplayName("Second start")
-    void trySecondStart() throws InterruptedException, IllegalAccessException {
+    void trySecondStart() throws IllegalAccessException {
         ConfigProvider configProvider = new ConfigProvider();
         configProvider.startWatch();
         assertDoesNotThrow(configProvider::startWatch);
         configProvider.close();
 
         assertDoesNotThrow(configProvider::startWatch);
-        Thread.sleep(DEFAULT_POLL_TIMEOUT);
 
         Thread watchThread = readWatchThread(configProvider);
+        Awaitility.await()
+                .timeout(25, TimeUnit.MILLISECONDS)
+                .pollDelay(5, TimeUnit.MILLISECONDS)
+                .until(() -> !watchThread.isAlive());
         assertThat(watchThread.isAlive()).isFalse();
     }
 

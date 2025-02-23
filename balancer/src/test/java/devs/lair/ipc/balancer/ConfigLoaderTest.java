@@ -2,6 +2,7 @@ package devs.lair.ipc.balancer;
 
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.lang3.reflect.MethodUtils;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.TimeUnit;
 
 import static devs.lair.ipc.balancer.utils.Constants.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -110,14 +112,20 @@ class ConfigLoaderTest {
     @DisplayName("Full start")
     void startMain() throws InterruptedException, IllegalAccessException {
         Thread starter = new Thread(() -> ConfigLoader.main(new String[0]));
-        starter.start();
         starter.setUncaughtExceptionHandler((t, e) ->
                 assertThat(e).isInstanceOf(IllegalStateException.class));
-        Thread.sleep(100);
-        ConfigLoader cl = (ConfigLoader) FieldUtils.readDeclaredStaticField(ConfigLoader.class, "cl", true);
-        cl.close();
-        Thread.sleep(100);
+        starter.start();
 
+        Thread.sleep(50);
+
+        ConfigLoader cl = (ConfigLoader) FieldUtils
+                .readDeclaredStaticField(ConfigLoader.class, "cl", true);
+        cl.close();
+
+        Awaitility.await()
+                .timeout(50, TimeUnit.MILLISECONDS)
+                .pollDelay(5, TimeUnit.MILLISECONDS)
+                .until(() -> !starter.isAlive());
         assertThat(starter.isAlive()).isFalse();
     }
 
@@ -132,7 +140,10 @@ class ConfigLoaderTest {
         Thread.sleep(100);
 
         starter.interrupt();
-        Thread.sleep(100);
+        Awaitility.await()
+                .timeout(150, TimeUnit.MILLISECONDS)
+                .pollDelay(50, TimeUnit.MILLISECONDS)
+                .until(() -> !starter.isAlive());
 
         assertThat(starter.isAlive()).isFalse();
         WAIT_OTHERS_TIMEOUT = 25;
