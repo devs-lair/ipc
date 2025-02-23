@@ -98,16 +98,24 @@ class UtilsTest {
     }
 
     @Test
+    @DisplayName("Args == null")
+    void argsCanBeNull() {
+        final String PREFIX = "ACTOR";
+        String generatedName = Utils.generateUniqueName(null, PREFIX);
+        assertThat(generatedName).contains(PREFIX);
+    }
+
+    @Test
     @DisplayName("On null throw Exception")
     void onNullTest() {
         assertThrows(NullPointerException.class, () -> Utils.tryDelete(null));
         assertThrows(NullPointerException.class, () -> Utils.createDirectoryIfNotExist(null));
         assertThrows(NullPointerException.class, () -> Utils.getNameFromPath(null));
         assertThrows(NullPointerException.class, () -> Utils.getPathFromName(null));
-        assertThrows(NullPointerException.class, () -> Utils.generateUniqueName(null, "PREFIX"));
         assertThrows(NullPointerException.class, () -> Utils.generateUniqueName(new String[0], null));
         assertThrows(NullPointerException.class, () -> Utils.generateUniqueName(null, null));
         assertThrows(IllegalArgumentException.class, () -> Utils.generateUniqueName(new String[0], ""));
+
     }
 
     @Test

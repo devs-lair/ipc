@@ -166,4 +166,21 @@ class ConfigLoaderTest {
             Files.write(CONFIG_PATH, saved);
         }
     }
+
+    @Test
+    @DisplayName("Modify not config file")
+    void modifyAnotherFile() throws InterruptedException, IOException {
+        ConfigLoader configLoader = Mockito.spy(ConfigLoader.class);
+        Thread starter = new Thread(configLoader::init);
+        starter.start();
+        starter.setUncaughtExceptionHandler((t, e) ->
+                assertThat(e).isInstanceOf(IllegalStateException.class));
+
+        Thread.sleep(100);
+
+        Files.write(MEMORY_CONFIG_PATH, "1".getBytes(), StandardOpenOption.APPEND);
+        verify(configLoader, timeout(500).times(1)).loadFileToMemory();
+        starter.interrupt();
+        configLoader.close();
+    }
 }

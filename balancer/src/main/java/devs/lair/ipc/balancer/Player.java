@@ -17,6 +17,10 @@ public class Player {
 
     private boolean isStop = false;
 
+    public Player() {
+        this(generateUniqueName(null, "player"));
+    }
+
     public Player(String name) {
         if (name == null || name.isEmpty()) {
             throw new IllegalArgumentException("Не верное имя!");
@@ -36,7 +40,6 @@ public class Player {
                     Files.write(playerFile, Move.getRandomMoveBytes());
                 }
                 Thread.sleep(configProvider.getPlayerTick());
-                System.out.println(configProvider.getPlayerTick());
             } catch (InterruptedException | IOException e) {
                 break;
             }
@@ -63,6 +66,7 @@ public class Player {
 
     private static Player p; // for tests
     public static void main(String[] args) {
-        (p = new Player(generateUniqueName(args, "player"))).start();
+        p = new Player(generateUniqueName(args, "player"));
+        p.start();
     }
 }

@@ -45,7 +45,7 @@ public class Utils {
         if (prefix.isEmpty())
             throw new IllegalArgumentException("Prefix is empty!");
 
-        return (args.length > 0 && !args[0].isEmpty())
+        return (args != null && args.length > 0 && !args[0].isEmpty())
                 ? args[0]
                 : prefix + (System.currentTimeMillis() - 1738605400000L);
     }
