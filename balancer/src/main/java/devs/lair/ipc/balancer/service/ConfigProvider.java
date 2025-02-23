@@ -25,11 +25,11 @@ public class ConfigProvider implements AutoCloseable {
     private boolean isStop = false;
     private boolean updating = false;
 
-    //Params
+    //Default params
     private int playerTick = 500;
     private int arbiterTick = 500;
     private int maxPlayerCount = 4;
-    private int spawnPeriod = 1000;
+    private int spawnPeriod = 100;
     private int maxRound = 5;
 
     public ConfigProvider() {
@@ -111,7 +111,7 @@ public class ConfigProvider implements AutoCloseable {
         }
     }
 
-    private int readPositiveInt(String propertyName, int defaultValue) {
+    public int readPositiveInt(String propertyName, int defaultValue) {
         return getInt(propertyName, defaultValue, value -> value > 0);
     }
 
@@ -155,7 +155,7 @@ public class ConfigProvider implements AutoCloseable {
         return maxPlayerCount;
     }
 
-    public long getSpawnPeriod() {
+    public int getSpawnPeriod() {
         return spawnPeriod;
     }
 

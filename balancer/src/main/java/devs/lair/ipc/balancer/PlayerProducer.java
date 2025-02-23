@@ -15,36 +15,39 @@ public class PlayerProducer {
 
     private final Set<Process> players = new HashSet<>();
     private final ConfigProvider configProvider;
+    private final ProcessBuilder processBuilder;
 
     private boolean isStop = false;
 
     public PlayerProducer() {
         configProvider = new ConfigProvider();
+        processBuilder = new ProcessBuilder();
     }
 
     public void startProduce() {
         Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
 
         configProvider.init();
-        int initialPlayerCount = configProvider.getInt(INITIAL_PLAYER_COUNT_KEY,
-                2, value -> value >=0);
-
+        int initialPlayerCount = configProvider.readPositiveInt(INITIAL_PLAYER_COUNT_KEY, 2);
         int currentCount = 1;
+
         try {
             while (!isStop) {
                 if (currentCount < initialPlayerCount
                         || currentCount <= configProvider.getMaxPlayerCount()) {
-                    players.add(new ProcessBuilder(COMMANDS).start());
+                    players.add(processBuilder.command(COMMANDS).start());
                     System.out.println("Стартовал процесс игрока с номером " + currentCount);
                     currentCount++;
                 }
                 Thread.sleep(currentCount > initialPlayerCount
                         ? configProvider.getSpawnPeriod() : 10);
+
+                players.removeIf(p->!p.isAlive());
             }
         } catch (IOException e) {
-            System.out.println("При создании процесса произошла ошибка"); // от start()
+            throw new IllegalStateException("При создании процесса произошла ошибка");
         } catch (InterruptedException e) {
-            System.out.println("Процесс был прерван");
+            throw new IllegalStateException("Процесс был прерван");
         }
     }
 
@@ -52,9 +55,11 @@ public class PlayerProducer {
         isStop = true;
         configProvider.close();
         players.forEach(Process::destroy);
+        Thread.currentThread().interrupt();
     }
 
+    private static PlayerProducer pp; //for tests
     public static void main(String[] args) {
-        new PlayerProducer().startProduce();
+        (pp = new PlayerProducer()).startProduce();
     }
 }

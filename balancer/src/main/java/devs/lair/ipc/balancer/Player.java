@@ -61,7 +61,8 @@ public class Player {
         }
     }
 
+    private static Player p; // for tests
     public static void main(String[] args) {
-        new Player(generateUniqueName(args, "player")).start();
+        (p = new Player(generateUniqueName(args, "player"))).start();
     }
 }
