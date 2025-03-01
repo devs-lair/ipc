@@ -13,7 +13,7 @@ import static devs.lair.ipc.balancer.utils.Utils.*;
 public class Player {
     private final String name;
     private final Path playerFile;
-    private final ConfigProvider configProvider;
+    private final ConfigProvider configProvider = new ConfigProvider();
 
     private boolean isStop = false;
 
@@ -28,12 +28,12 @@ public class Player {
 
         this.name = name;
         this.playerFile = getPathFromName(name);
-        createPlayerFile();
 
-        this.configProvider = new ConfigProvider();
+        createPlayerFile();
     }
 
     public void start() {
+        configProvider.init();
         while (!isStop) {
             try {
                 if (Files.size(playerFile) == 0) {

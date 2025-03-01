@@ -14,15 +14,10 @@ public class PlayerProducer {
     private static final String[] COMMANDS = {"java", "-cp", CLASS_PATH, MAIN_CLASS};
 
     private final Set<Process> players = new HashSet<>();
-    private final ConfigProvider configProvider;
-    private final ProcessBuilder processBuilder;
+    private final ConfigProvider configProvider = new ConfigProvider();
+    private final ProcessBuilder processBuilder = new ProcessBuilder();
 
     private boolean isStop = false;
-
-    public PlayerProducer() {
-        configProvider = new ConfigProvider();
-        processBuilder = new ProcessBuilder();
-    }
 
     public void startProduce() {
         Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
@@ -42,7 +37,7 @@ public class PlayerProducer {
                 Thread.sleep(currentCount > initialPlayerCount
                         ? configProvider.getSpawnPeriod() : 10);
 
-                players.removeIf(p->!p.isAlive());
+                players.removeIf(p -> !p.isAlive());
             }
         } catch (IOException e) {
             throw new IllegalStateException("При создании процесса произошла ошибка");

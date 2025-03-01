@@ -1,6 +1,7 @@
 package devs.lair.ipc.balancer;
 
 
+import devs.lair.ipc.balancer.service.ConfigProvider;
 import devs.lair.ipc.balancer.utils.IPlayerProvider;
 import devs.lair.ipc.balancer.utils.Move;
 
@@ -13,31 +14,26 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
+import static devs.lair.ipc.balancer.utils.Constants.MAX_ATTEMPT_KEY;
 import static devs.lair.ipc.balancer.utils.Utils.getPathFromName;
 import static devs.lair.ipc.balancer.utils.Utils.tryDelete;
 
 
 public class Arbiter {
-    private final int tick;
-
     private final String[] players = new String[2];
     private final Move[] moves = new Move[2];
-    private int roundNumber = 1;
-    private final int maxRound = 5;
-
+    private final ConfigProvider configProvider = new ConfigProvider();
     private IPlayerProvider playerProvider;
-    private boolean isStop = false;
 
-    public Arbiter(int tick) {
-        if (tick < 0) {
-            throw new IllegalArgumentException("Тик должен быть строго больше нуля");
-        }
-        this.tick = tick;
-    }
+    private boolean isStop = false;
+    private int roundNumber = 1;
 
     public void start() {
+        configProvider.init();
+
         Runtime.getRuntime()
                 .addShutdownHook(new Thread(this::stop));
+
         try {
             while (!isStop) {
                 fetchPlayers();
@@ -47,7 +43,7 @@ public class Arbiter {
                     fetchPlayersMove();
                     fetchResult();
                 }
-                Thread.sleep(tick);
+                Thread.sleep(configProvider.getArbiterTick());
             }
         } catch (InterruptedException e) {
             System.out.println("Основной поток был прерван");
@@ -55,8 +51,9 @@ public class Arbiter {
     }
 
     public void stop() {
-        clearPlayersFiles();
         isStop = true;
+        configProvider.close();
+        clearPlayersFiles();
     }
 
     private void fetchPlayers() {
@@ -83,14 +80,15 @@ public class Arbiter {
             printResult();
             clearPlayersFiles();
 
-            if (roundNumber++ == maxRound) {
+            if (roundNumber++ >= configProvider.getMaxRound()) {
                 System.out.printf("Игроки %s и %s завершили игру \n\n", players[0], players[1]);
                 deletePlayersFiles();
             }
         }
     }
 
-    private boolean playersReady() {
+    //public, fot test only
+    public boolean playersReady() {
         if (players[0] == null || players[1] == null) {
             System.out.printf("Не хватает %d игроков(а) \n",
                     players[0] == null && players[1] == null ? 2 : 1);
@@ -117,18 +115,17 @@ public class Arbiter {
 
     private Move readPlayerMove(String playerName) {
         int attempt = 0;
-        int maxAttempt = 10;
         Path playerFile = getPathFromName(playerName);
 
         try {
-            while (attempt++ <= maxAttempt) {
+            do {
                 if (Files.size(playerFile) == 0) {
                     System.out.println("Ожидаем хода игрока " + playerName);
-                    Thread.sleep(tick);
+                    Thread.sleep(configProvider.getArbiterTick());
                     continue;
                 }
                 return Move.valueOf(Files.readAllBytes(playerFile));
-            }
+            } while (attempt++ <= configProvider.readPositiveInt(MAX_ATTEMPT_KEY, 5));
         } catch (Exception e) {
             switch (e) {
                 case NoSuchFileException nsfe -> System.out.printf("Нет файла для игрока %s\n", playerName);
@@ -188,8 +185,8 @@ public class Arbiter {
         }
     }
 
+    private static Arbiter arbiter; //only for tests
     public static void main(String[] args) {
-        int tick = 1000;
-        new Arbiter(tick).start();
+        (arbiter = new Arbiter()).start();
     }
 }

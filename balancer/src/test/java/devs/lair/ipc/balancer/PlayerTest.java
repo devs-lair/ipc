@@ -83,6 +83,7 @@ class PlayerTest {
         verify(configProvider, timeout(40).times(3)).getPlayerTick();
         configProvider.close();
         starter.interrupt();
+        files.close();
     }
 
     @Test
@@ -111,6 +112,8 @@ class PlayerTest {
 
         Thread.sleep(10);
         assertThat(starter.isAlive()).isFalse();
+        player.stop();
+        starter.interrupt();
     }
 
     private ConfigProvider mockConfigProvider() {
@@ -122,6 +125,4 @@ class PlayerTest {
     private void writeMock(Player player, ConfigProvider configProvider) throws IllegalAccessException {
         FieldUtils.writeField(player, "configProvider", configProvider, true);
     }
-
-
 }
