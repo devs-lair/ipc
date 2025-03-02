@@ -1,4 +1,4 @@
-package devs.lair.ipc.balancer.utils;
+package devs.lair.ipc.balancer.service;
 
 import java.io.IOException;
 import java.nio.file.*;

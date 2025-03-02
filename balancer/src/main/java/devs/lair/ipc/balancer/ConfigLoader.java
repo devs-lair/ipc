@@ -1,6 +1,6 @@
 package devs.lair.ipc.balancer;
 
-import devs.lair.ipc.balancer.utils.DirWatcher;
+import devs.lair.ipc.balancer.service.DirWatcher;
 
 import java.io.IOException;
 import java.nio.BufferOverflowException;
@@ -54,7 +54,7 @@ public class ConfigLoader implements AutoCloseable {
             memory.put((byte) -1); // block read
             Thread.sleep(WAIT_OTHERS_TIMEOUT); // wait others
 
-            memory.clear();
+            memory.put(0, new byte[MEMORY_SIZE]);
             memory.put(1, readConfigFile());
             memory.put(0, ++version);
         } catch (IOException | BufferOverflowException e) {

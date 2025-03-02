@@ -1,4 +1,4 @@
-package devs.lair.ipc.balancer.utils;
+package devs.lair.ipc.balancer.service.interfaces;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;

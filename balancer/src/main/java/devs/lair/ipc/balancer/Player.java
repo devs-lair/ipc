@@ -2,6 +2,7 @@ package devs.lair.ipc.balancer;
 
 import devs.lair.ipc.balancer.service.ConfigProvider;
 import devs.lair.ipc.balancer.utils.Move;
+import devs.lair.ipc.balancer.utils.Utils;
 
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
@@ -14,7 +15,6 @@ public class Player {
     private final String name;
     private final Path playerFile;
     private final ConfigProvider configProvider = new ConfigProvider();
-
     private boolean isStop = false;
 
     public Player() {
@@ -22,9 +22,8 @@ public class Player {
     }
 
     public Player(String name) {
-        if (name == null || name.isEmpty()) {
+        if (Utils.isNullOrEmpty(name))
             throw new IllegalArgumentException("Не верное имя!");
-        }
 
         this.name = name;
         this.playerFile = getPathFromName(name);
@@ -58,7 +57,8 @@ public class Player {
             Files.createFile(playerFile);
             Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
         } catch (IOException e) {
-            throw new IllegalArgumentException(e instanceof FileAlreadyExistsException
+            throw new IllegalArgumentException(
+                    e instanceof FileAlreadyExistsException
                     ? "Игрок с именем " + name + " уже играет (есть файл)"
                     : "При создании файла игрока произошла ошибка");
         }
@@ -66,7 +66,6 @@ public class Player {
 
     private static Player p; // for tests
     public static void main(String[] args) {
-        p = new Player(generateUniqueName(args, "player"));
-        p.start();
+        (p = new Player(generateUniqueName(args, "player"))).start();
     }
 }

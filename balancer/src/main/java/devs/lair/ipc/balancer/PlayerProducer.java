@@ -34,10 +34,10 @@ public class PlayerProducer {
                     System.out.println("Стартовал процесс игрока с номером " + currentCount);
                     currentCount++;
                 }
-                Thread.sleep(currentCount > initialPlayerCount
-                        ? configProvider.getSpawnPeriod() : 10);
 
                 players.removeIf(p -> !p.isAlive());
+                Thread.sleep(currentCount > initialPlayerCount
+                        ? configProvider.getSpawnPeriod() : 10);
             }
         } catch (IOException e) {
             throw new IllegalStateException("При создании процесса произошла ошибка");
@@ -50,7 +50,6 @@ public class PlayerProducer {
         isStop = true;
         configProvider.close();
         players.forEach(Process::destroy);
-        Thread.currentThread().interrupt();
     }
 
     private static PlayerProducer pp; //for tests

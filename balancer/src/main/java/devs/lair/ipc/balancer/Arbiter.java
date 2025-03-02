@@ -1,8 +1,7 @@
 package devs.lair.ipc.balancer;
 
-
 import devs.lair.ipc.balancer.service.ConfigProvider;
-import devs.lair.ipc.balancer.utils.IPlayerProvider;
+import devs.lair.ipc.balancer.service.interfaces.IPlayerProvider;
 import devs.lair.ipc.balancer.utils.Move;
 
 import java.io.IOException;
@@ -17,7 +16,6 @@ import java.rmi.registry.Registry;
 import static devs.lair.ipc.balancer.utils.Constants.MAX_ATTEMPT_KEY;
 import static devs.lair.ipc.balancer.utils.Utils.getPathFromName;
 import static devs.lair.ipc.balancer.utils.Utils.tryDelete;
-
 
 public class Arbiter {
     private final String[] players = new String[2];
@@ -57,10 +55,10 @@ public class Arbiter {
     }
 
     private void fetchPlayers() {
-        int counter = 0;
-        for (String playerName : players) {
+        for (int i = 0; i < 2; i++) {
+            String playerName = players[i];
             if (playerName == null || !Files.exists(getPathFromName(playerName))) {
-                players[counter++] = getPlayerName();
+                players[i] = getPlayerName();
                 roundNumber = 1;
             }
         }

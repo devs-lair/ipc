@@ -1,7 +1,7 @@
 package devs.lair.ipc.balancer;
 
 import devs.lair.ipc.balancer.service.ConfigProvider;
-import devs.lair.ipc.balancer.utils.IPlayerProvider;
+import devs.lair.ipc.balancer.service.interfaces.IPlayerProvider;
 import devs.lair.ipc.balancer.utils.Move;
 import devs.lair.ipc.balancer.utils.Utils;
 import org.apache.commons.lang3.reflect.FieldUtils;
