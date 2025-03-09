@@ -9,7 +9,8 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
-import static devs.lair.ipc.balancer.service.enums.ProcessType.*;
+import static devs.lair.ipc.balancer.service.enums.ProcessType.CONFIG_LOADER;
+import static devs.lair.ipc.balancer.service.enums.ProcessType.PLAYER_PRODUCER;
 import static devs.lair.ipc.balancer.utils.Constants.MEMORY_CONFIG_PATH;
 
 public class GameController {
@@ -28,7 +29,7 @@ public class GameController {
             waitConfigLoaderStarted();
 
             actors.add(ProcessStarter.startProcess(PLAYER_PRODUCER));
-            balancer.init(actors, playerProvider);
+            balancer.init(playerProvider);
 
             while (true) {
                 Thread.sleep(1000);
@@ -57,7 +58,7 @@ public class GameController {
     }
 
     private void printStatus() {
-        long arbiterCount = actors.stream().filter(p -> p.getType() == ARBITER).count();
+        long arbiterCount = balancer.getArbitersCount();
         int querySize = playerProvider.getQuerySize();
         int provided = playerProvider.getProviderPlayersCount();
 

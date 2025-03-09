@@ -84,7 +84,18 @@ class ArbiterTest {
             try (MockedStatic<LocateRegistry> locate = mockStatic(LocateRegistry.class)) {
                 Registry registry = mock(Registry.class);
 
-                when(registry.lookup(any())).thenReturn((IPlayerProvider) arbiterName -> "pl");
+                when(registry.lookup(any())).thenReturn(new IPlayerProvider() {
+                    @Override
+                    public String getPlayerName(String arbiterName) throws RemoteException {
+                        return "pl";
+                    }
+
+                    @Override
+                    public void returnPlayer(String player) throws RemoteException {
+
+                    }
+                });
+
                 locate.when(LocateRegistry::getRegistry).thenReturn(registry);
                 assertThrows(ClassCastException.class, arbiter::start);
             } catch (Exception ignored) {
