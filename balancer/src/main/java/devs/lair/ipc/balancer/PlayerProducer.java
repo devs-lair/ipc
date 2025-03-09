@@ -18,8 +18,9 @@ public class PlayerProducer extends ConfigurableProcess {
 
         try {
             while (!currentThread().isInterrupted()) {
-                if (currentCount++ <= configProvider.getMaxPlayerCount()) {
+                if (currentCount <= configProvider.getMaxPlayerCount()) {
                     players.add(ProcessStarter.startProcess(PLAYER).getProcess());
+                    currentCount++;
                 }
 
                 players.removeIf(p -> !p.isAlive());

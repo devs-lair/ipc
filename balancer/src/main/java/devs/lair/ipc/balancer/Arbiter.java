@@ -3,6 +3,7 @@ package devs.lair.ipc.balancer;
 import devs.lair.ipc.balancer.service.interfaces.ConfigurableProcess;
 import devs.lair.ipc.balancer.service.interfaces.IPlayerProvider;
 import devs.lair.ipc.balancer.utils.Move;
+import sun.misc.Signal;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,9 +25,12 @@ public class Arbiter extends ConfigurableProcess {
     private IPlayerProvider playerProvider;
 
     private int roundNumber = 1;
+    private boolean terminate = false;
 
     public void start() {
         super.start();
+
+        Signal.handle(new Signal("TERM"), sig -> terminate = true);
 
         try {
             while (!currentThread().isInterrupted()) {
@@ -41,17 +45,24 @@ public class Arbiter extends ConfigurableProcess {
             }
         } catch (InterruptedException e) {
             System.out.println("Основной поток был прерван");
+        } catch (IllegalStateException e) {
+            System.out.println("Остановлен по сигналу");
         }
+
+        stop();
     }
 
     public void stop() {
-       super.stop();
+        super.stop();
+        returnPlayers();
     }
 
     private void fetchPlayers() {
         for (int i = 0; i < 2; i++) {
             String playerName = players[i];
             if (playerName == null || !Files.exists(getPathFromName(playerName))) {
+                if (terminate) throw new IllegalStateException();
+
                 players[i] = fetchPlayerName();
                 roundNumber = 1;
             }
@@ -74,6 +85,20 @@ public class Arbiter extends ConfigurableProcess {
         return null;
     }
 
+    private void returnPlayers() {
+        try {
+            for (String player : players) {
+                if (player != null) {
+                    playerProvider.returnPlayer(player);
+                }
+            }
+        } catch (RemoteException e) {
+            System.out.println("Ну удалось вернуть игрока");
+        } catch (NullPointerException e) {
+            System.out.println("Нет playerProvider");
+        }
+    }
+
     private void fetchPlayersMove() {
         int counter = 0;
         for (String playerName : players) {
@@ -91,6 +116,9 @@ public class Arbiter extends ConfigurableProcess {
             if (roundNumber++ >= configProvider.getMaxRound()) {
                 System.out.printf("Игроки %s и %s завершили игру \n\n", players[0], players[1]);
                 deletePlayersFiles();
+                if (terminate) {
+                    throw new IllegalStateException();
+                }
             }
         }
     }
@@ -178,6 +206,6 @@ public class Arbiter extends ConfigurableProcess {
     }
 
     public static void main(String[] args) {
-       new Arbiter().start();
+        new Arbiter().start();
     }
 }

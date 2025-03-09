@@ -42,6 +42,12 @@ public class PlayerProvider implements IPlayerProvider {
         return null;
     }
 
+    @Override
+    public void returnPlayer(String player) throws RemoteException {
+        players.add(player);
+        provided.decrementAndGet();
+    }
+
     public void init() {
         startWatch();
         register();

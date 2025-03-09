@@ -4,8 +4,7 @@ import devs.lair.ipc.balancer.service.enums.ProcessStatus;
 import devs.lair.ipc.balancer.service.enums.ProcessType;
 import devs.lair.ipc.balancer.utils.Utils;
 
-import static devs.lair.ipc.balancer.service.enums.ProcessStatus.DEAD;
-import static devs.lair.ipc.balancer.service.enums.ProcessStatus.STARTED;
+import static devs.lair.ipc.balancer.service.enums.ProcessStatus.*;
 import static devs.lair.ipc.balancer.service.enums.ProcessType.ARBITER;
 
 public class ActorProcess {
@@ -30,13 +29,21 @@ public class ActorProcess {
 
     public void terminate() {
         process.destroy();
-        status = DEAD;
-        System.out.printf("Процесс был завершен: имя %s, тип %s, pid = %d \n",
+        status = TERMINATING;
+        System.out.printf("Процессу отправлен сигнал на завершение: имя %s, тип %s, pid = %d \n",
                 name, type, process.pid());
     }
 
     public boolean isArbiter() {
         return type == ARBITER;
+    }
+
+    public boolean isTerminating() {
+        return status == TERMINATING;
+    }
+
+    public boolean isDead() {
+        return status == DEAD;
     }
 
     public Process getProcess() {
