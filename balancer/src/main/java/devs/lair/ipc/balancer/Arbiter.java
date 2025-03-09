@@ -1,6 +1,6 @@
 package devs.lair.ipc.balancer;
 
-import devs.lair.ipc.balancer.service.ConfigProvider;
+import devs.lair.ipc.balancer.service.interfaces.ConfigurableProcess;
 import devs.lair.ipc.balancer.service.interfaces.IPlayerProvider;
 import devs.lair.ipc.balancer.utils.Move;
 
@@ -16,24 +16,20 @@ import java.rmi.registry.Registry;
 import static devs.lair.ipc.balancer.utils.Constants.MAX_ATTEMPT_KEY;
 import static devs.lair.ipc.balancer.utils.Utils.getPathFromName;
 import static devs.lair.ipc.balancer.utils.Utils.tryDelete;
+import static java.lang.Thread.currentThread;
 
-public class Arbiter {
+public class Arbiter extends ConfigurableProcess {
     private final String[] players = new String[2];
     private final Move[] moves = new Move[2];
-    private final ConfigProvider configProvider = new ConfigProvider();
     private IPlayerProvider playerProvider;
 
-    private boolean isStop = false;
     private int roundNumber = 1;
 
     public void start() {
-        configProvider.init();
-
-        Runtime.getRuntime()
-                .addShutdownHook(new Thread(this::stop));
+        super.start();
 
         try {
-            while (!isStop) {
+            while (!currentThread().isInterrupted()) {
                 fetchPlayers();
 
                 if (playersReady()) {
@@ -49,19 +45,33 @@ public class Arbiter {
     }
 
     public void stop() {
-        isStop = true;
-        configProvider.close();
-        clearPlayersFiles();
+       super.stop();
     }
 
     private void fetchPlayers() {
         for (int i = 0; i < 2; i++) {
             String playerName = players[i];
             if (playerName == null || !Files.exists(getPathFromName(playerName))) {
-                players[i] = getPlayerName();
+                players[i] = fetchPlayerName();
                 roundNumber = 1;
             }
         }
+    }
+
+    private String fetchPlayerName() {
+        try {
+            if (playerProvider == null) {
+                Registry registry = LocateRegistry.getRegistry();
+                playerProvider = (IPlayerProvider) registry.lookup(IPlayerProvider.class.getName());
+            }
+            return playerProvider.getPlayerName("arbiter");
+        } catch (RemoteException e) {
+            playerProvider = null;
+            System.out.println("Ошибка при получения хода игрока из PlayerProvider");
+        } catch (NullPointerException | NotBoundException e) {
+            System.out.println("Ошибка при получения сервиса PlayerProvider");
+        }
+        return null;
     }
 
     private void fetchPlayersMove() {
@@ -93,22 +103,6 @@ public class Arbiter {
             return false;
         }
         return true;
-    }
-
-    private String getPlayerName() {
-        try {
-            if (playerProvider == null) {
-                Registry registry = LocateRegistry.getRegistry();
-                playerProvider = (IPlayerProvider) registry.lookup(IPlayerProvider.class.getName());
-            }
-            return playerProvider.getPlayerName("arbiter");
-        } catch (RemoteException e) {
-            playerProvider = null;
-            System.out.println("Ошибка при получения хода игрока из PlayerProvider");
-        } catch (NullPointerException | NotBoundException e) {
-            System.out.println("Ошибка при получения сервиса PlayerProvider");
-        }
-        return null;
     }
 
     private Move readPlayerMove(String playerName) {
@@ -183,8 +177,7 @@ public class Arbiter {
         }
     }
 
-    private static Arbiter arbiter; //only for tests
     public static void main(String[] args) {
-        (arbiter = new Arbiter()).start();
+       new Arbiter().start();
     }
 }

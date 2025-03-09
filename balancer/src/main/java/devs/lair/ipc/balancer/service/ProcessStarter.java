@@ -5,38 +5,26 @@ import devs.lair.ipc.balancer.service.enums.ProcessType;
 import devs.lair.ipc.balancer.service.model.ActorProcess;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Map;
-
-import static devs.lair.ipc.balancer.service.enums.ProcessType.*;
+import java.util.List;
 
 public class ProcessStarter {
-    private static final String CLASS_PATH = "/home/devslair/prjs/ipc/balancer/target/classes";
-    private static final String[] COMMANDS = {"java", "-cp", CLASS_PATH};
+    private static final ProcessBuilder processBuilder = new ProcessBuilder();
+    private static final String CLASS_PATH = ProcessStarter.class.getProtectionDomain()
+            .getCodeSource().getLocation().getPath();
 
-    private final ProcessBuilder processBuilder = new ProcessBuilder();
-    private final Map<ProcessType, String> actorsClass = Map.of(
-            ARBITER, "devs.lair.ipc.balancer.Arbiter",
-            CONFIG_LOADER, "devs.lair.ipc.balancer.ConfigLoader",
-            PLAYER_PRODUCER, "devs.lair.ipc.balancer.PlayerProducer"
-    );
+    private static final List<String> commands = List.of("java", "-cp", CLASS_PATH);
 
-    public ActorProcess startProcess(ProcessType type, String[] args) {
-        if (type == null) {
+    public static ActorProcess startProcess(ProcessType type, String[] args) {
+        if (type == null)
             throw new IllegalArgumentException("Необходимо передать тип");
-        }
 
         try {
-            int commandsLength = 4;
-            if (args != null && args.length == 0) {
-                commandsLength += args.length;
-            }
-
-            String[] executeLine = Arrays.copyOf(COMMANDS, commandsLength);
-            executeLine[3] = actorsClass.get(type);
-
+            List<String> executeLine = new ArrayList<>(commands);
+            executeLine.add(type.getMainClass().getCanonicalName());
             if (args != null) {
-                System.arraycopy(args, 0, executeLine, 4, args.length);
+                executeLine.addAll(Arrays.stream(args).toList());
             }
 
             Process process = processBuilder.command(executeLine).start();
@@ -53,7 +41,7 @@ public class ProcessStarter {
         return null;
     }
 
-    public ActorProcess startProcess(ProcessType type) {
+    public static ActorProcess startProcess(ProcessType type) {
         return startProcess(type, null);
     }
 }

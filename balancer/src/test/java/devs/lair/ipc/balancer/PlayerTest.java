@@ -13,7 +13,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 class PlayerTest {
@@ -32,37 +31,48 @@ class PlayerTest {
     @DisplayName("Create instance, mock config provider")
     void createInstanceMockConfigProviderWithName() {
         assertDoesNotThrow(() -> {
-            Player player = new Player("SOME NAME");
+            Player player = new Player();
             writeMock(player, mockConfigProvider());
             player.stop();
         });
     }
 
     @Test
-    @DisplayName("Without name")
-    void throwOnInvalidName() {
-        assertThrows(IllegalArgumentException.class, ()->new Player(""));
-        assertThrows(IllegalArgumentException.class, ()->new Player(null));
-    }
-
-    @Test
     @DisplayName("Already in game")
-    void alreadyInGame() throws IOException {
-        Path pathFromName = Utils.getPathFromName("max");
+    void alreadyInGame() throws IOException, IllegalAccessException {
+        Player player = new Player();
+        String name = (String) FieldUtils.readField(player, "name", true);
+
+        Path pathFromName = Utils.getPathFromName(name);
         Files.createFile(pathFromName);
 
-        assertThrows(IllegalArgumentException.class, () -> new Player("max"));
+        assertDoesNotThrow(player::start);
         Utils.tryDelete(pathFromName);
     }
 
     @Test
     @DisplayName("Exception on createFile")
     void exceptionOnFileCreate() {
+        Player player = new Player();
         MockedStatic<Files> files = mockStatic(Files.class);
         files.when(()->Files.createFile(any())).thenThrow(new IOException());
-        assertThrows(IllegalArgumentException.class, Player::new);
+        assertDoesNotThrow(player::start);
 
         files.close();
+    }
+
+    @Test
+    @DisplayName("Delete file")
+    void deletePlayerFile() throws IllegalAccessException, InterruptedException {
+        Player player = spy(Player.class);
+        String name = (String) FieldUtils.readField(player, "name", true);
+        Thread starter = new Thread(player::start);
+        starter.start();
+        Thread.sleep(100);
+
+        Path pathFromName = Utils.getPathFromName(name);
+        Utils.tryDelete(pathFromName);
+        verify(player, timeout(500).times(1)).stop();
     }
 
     @Test
@@ -88,32 +98,16 @@ class PlayerTest {
 
     @Test
     @DisplayName("Start main")
-    void startMain() throws IllegalAccessException, InterruptedException {
+    void startMain() throws  InterruptedException {
         Thread starter = new Thread(()-> Player.main(new String[0]));
         starter.start();
 
         Thread.sleep(100);
 
-        Player p = (Player) FieldUtils.readDeclaredStaticField(Player.class, "p", true);
-        p.stop();
         starter.interrupt();
 
-        Thread.sleep(250);
+        Thread.sleep(350);
         assertThat(starter.isAlive()).isFalse();
-    }
-
-    @Test
-    @DisplayName("isStop = true, just coverage test")
-    void isStopTrue() throws IllegalAccessException, InterruptedException {
-        Player player = new Player();
-        FieldUtils.writeField(player, "isStop", true, true);
-        Thread starter = new Thread(player::start);
-        starter.start();
-
-        Thread.sleep(10);
-        assertThat(starter.isAlive()).isFalse();
-        player.stop();
-        starter.interrupt();
     }
 
     private ConfigProvider mockConfigProvider() {

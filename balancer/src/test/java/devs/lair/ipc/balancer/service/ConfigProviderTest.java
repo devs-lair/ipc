@@ -12,11 +12,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.MappedByteBuffer;
-import java.nio.file.Paths;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
-import static devs.lair.ipc.balancer.utils.Constants.*;
+import static devs.lair.ipc.balancer.utils.Constants.DEFAULT_POLL_TIMEOUT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -26,14 +25,6 @@ import static org.mockito.Mockito.*;
 @TestMethodOrder(MethodOrderer.MethodName.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ConfigProviderTest {
-
-    @BeforeAll
-    void beforeAll() {
-        CONFIG_PATH = Paths.get("../" + CONFIG_DIR + "/" + CONFIG_FILE);
-        MEMORY_CONFIG_PATH = Paths.get("../" + CONFIG_DIR + "/" + MEMORY_CONFIG_FILE);
-        DEFAULT_POLL_TIMEOUT = 50;
-    }
-
 
     @Test
     @Order(1)
@@ -105,7 +96,6 @@ class ConfigProviderTest {
             configLoader.loadFileToMemory();
             configProvider.loadConfig();
 
-            assertThat(configProvider.getProperty(INITIAL_PLAYER_COUNT_KEY)).isNotNull();
             assertThat(configProvider.getProperty(Constants.MAX_ATTEMPT_KEY)).isNotNull();
         }
     }

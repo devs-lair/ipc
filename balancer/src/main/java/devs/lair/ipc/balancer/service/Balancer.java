@@ -10,7 +10,7 @@ public class Balancer implements AutoCloseable {
     private Thread worker;
     private boolean isStop = false;
 
-    public void init(List<ActorProcess> actors, ProcessStarter starter, PlayerProvider playerProvider) {
+    public void init(List<ActorProcess> actors, PlayerProvider playerProvider) {
         worker = new Thread(() -> {
             try {
                 while (!isStop) {
@@ -18,7 +18,7 @@ public class Balancer implements AutoCloseable {
                             .filter(ActorProcess::isArbiter).count();
 
                     if (arbitersCount == 0 || playerProvider.getQuerySize() > 10) {
-                        actors.add(starter.startProcess(ARBITER));
+                        actors.add(ProcessStarter.startProcess(ARBITER));
                     }
 
                     Thread.sleep(1000);

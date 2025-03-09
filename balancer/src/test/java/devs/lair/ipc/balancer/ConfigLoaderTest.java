@@ -3,7 +3,6 @@ package devs.lair.ipc.balancer;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.lang3.reflect.MethodUtils;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -15,7 +14,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.MappedByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.TimeUnit;
 
@@ -29,12 +27,6 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ConfigLoaderTest {
 
-    @BeforeAll
-    void beforeAll() {
-        CONFIG_PATH = Paths.get("../" + CONFIG_DIR + "/" + CONFIG_FILE);
-        MEMORY_CONFIG_PATH = Paths.get("../" + CONFIG_DIR + "/" + MEMORY_CONFIG_FILE);
-    }
-
     @Test
     @DisplayName("Positive create instance")
     void positiveCreateInstance() {
@@ -47,9 +39,11 @@ class ConfigLoaderTest {
     @Test
     @DisplayName("Positive create instance")
     void positiveNegativeInstance() {
-        CONFIG_PATH = Paths.get("NotExists");
-        assertThrows(IllegalArgumentException.class, ConfigLoader::new);
-        CONFIG_PATH = Paths.get("../" + CONFIG_DIR + "/" + CONFIG_FILE);
+        MockedStatic<Files> files = mockStatic(Files.class);
+        try (files) {
+            files.when(()->Files.exists(any())).thenReturn(false);
+            assertThrows(IllegalArgumentException.class, ConfigLoader::new);
+        }
     }
 
     @Test

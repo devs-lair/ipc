@@ -120,6 +120,7 @@ public class ConfigProvider implements AutoCloseable {
         isStop = true;
         if (watchThread != null) {
             watchThread.interrupt();
+            watchThread = null;
         }
     }
 

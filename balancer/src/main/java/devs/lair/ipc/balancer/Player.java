@@ -1,71 +1,59 @@
 package devs.lair.ipc.balancer;
 
-import devs.lair.ipc.balancer.service.ConfigProvider;
+import devs.lair.ipc.balancer.service.interfaces.ConfigurableProcess;
 import devs.lair.ipc.balancer.utils.Move;
-import devs.lair.ipc.balancer.utils.Utils;
 
-import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 
 import static devs.lair.ipc.balancer.utils.Utils.*;
+import static java.lang.Thread.currentThread;
 
-public class Player {
+public class Player extends ConfigurableProcess {
     private final String name;
-    private final Path playerFile;
-    private final ConfigProvider configProvider = new ConfigProvider();
-    private boolean isStop = false;
 
     public Player() {
-        this(generateUniqueName(null, "player"));
+        this.name = generateUniqueName("player");
     }
 
-    public Player(String name) {
-        if (Utils.isNullOrEmpty(name))
-            throw new IllegalArgumentException("Не верное имя!");
-
-        this.name = name;
-        this.playerFile = getPathFromName(name);
-
-        createPlayerFile();
-    }
-
+    @Override
     public void start() {
-        configProvider.init();
-        while (!isStop) {
-            try {
+        super.start();
+
+        try {
+            Path playerFile = getPathFromName(name);
+            createDirectoryIfNotExist(playerFile.getParent());
+            Files.createFile(playerFile);
+
+            while (!currentThread().isInterrupted()) {
                 if (Files.size(playerFile) == 0) {
                     Files.write(playerFile, Move.getRandomMoveBytes());
                 }
                 Thread.sleep(configProvider.getPlayerTick());
-            } catch (InterruptedException | IOException e) {
-                break;
             }
+
+        } catch (FileAlreadyExistsException e) {
+            System.out.println("Игрок с именем " + name + " уже играет " + e.getMessage());
+        } catch (NoSuchFileException e) {
+            System.out.println("Нет файла игрока " + e.getMessage());
+        } catch (InterruptedException e) {
+            System.out.println("Основной поток был прерван");
+        } catch (Exception e) {
+            System.out.println("Произошла непредвиденная ошибка: " + e.getMessage());
         }
+
+        stop();
     }
 
+    @Override
     public void stop() {
-        isStop = true;
-        configProvider.close();
-        tryDelete(playerFile);
+        super.stop();
+        tryDelete(getPathFromName(name));
     }
 
-    private void createPlayerFile() {
-        try {
-            createDirectoryIfNotExist(playerFile.getParent());
-            Files.createFile(playerFile);
-            Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
-        } catch (IOException e) {
-            throw new IllegalArgumentException(
-                    e instanceof FileAlreadyExistsException
-                    ? "Игрок с именем " + name + " уже играет (есть файл)"
-                    : "При создании файла игрока произошла ошибка");
-        }
-    }
-
-    private static Player p; // for tests
     public static void main(String[] args) {
-        (p = new Player(generateUniqueName(args, "player"))).start();
+        new Player().start();
     }
 }

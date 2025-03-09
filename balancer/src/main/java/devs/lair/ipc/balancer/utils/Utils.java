@@ -50,6 +50,10 @@ public class Utils {
                 : prefix + (System.currentTimeMillis() - 1738605400000L);
     }
 
+    public static String generateUniqueName(String prefix) {
+        return prefix + (System.currentTimeMillis() - 1738605400000L);
+    }
+
     public static int checkInt(int intValue, Predicate<Integer> predicate) {
         if (!predicate.test(intValue)) {
             throw new IllegalArgumentException("Аргумент не прошел проверку: " + intValue);
@@ -59,5 +63,13 @@ public class Utils {
 
     public static boolean isNullOrEmpty(String s) {
         return s == null || s.isEmpty();
+    }
+
+    public static void throwIllegalState(String message, Throwable throwable) {
+        throw new IllegalStateException(message, throwable);
+    }
+
+    public static void throwIllegalArgument(String message, Throwable throwable) {
+        throw new IllegalStateException(message, throwable);
     }
 }

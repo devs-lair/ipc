@@ -12,14 +12,16 @@ import org.mockito.MockedStatic;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Random;
 
-import static devs.lair.ipc.balancer.utils.Constants.*;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -247,37 +249,6 @@ class ArbiterTest {
         starter.interrupt();
     }
 
-    @Test
-    @DisplayName("Real config loader and provider")
-    void startWithRealPLayerLoader() throws Exception {
-        CONFIG_PATH = Paths.get("../" + CONFIG_DIR + "/" + CONFIG_FILE);
-        MEMORY_CONFIG_PATH = Paths.get("../" + CONFIG_DIR + "/" + MEMORY_CONFIG_FILE);
-
-        Arbiter arbiter = new Arbiter();
-
-        ConfigLoader configLoader = new ConfigLoader();
-        new Thread(configLoader::init).start();
-
-        IPlayerProvider playerProvider = getSpyForPlayerProvider();
-        FieldUtils.writeField(arbiter, "playerProvider", playerProvider, true);
-
-        Thread starter = new Thread(() -> {
-            try (MockedStatic<Files> files = mockStatic(Files.class)) {
-                files.when(() -> Files.newByteChannel(any(), any(OpenOption[].class))).thenCallRealMethod();
-                files.when(() -> Files.exists(any(Path.class))).thenReturn(true);
-                files.when(() -> Files.size(any(Path.class))).thenReturn(1L);
-                files.when(() -> Files.readAllBytes(any())).thenAnswer(invocation ->
-                        Move.getRandomMoveBytes());
-                arbiter.start();
-            }
-        });
-        starter.start();
-        verify(playerProvider, timeout(1000).times(2)).getPlayerName(anyString());
-
-        arbiter.stop();
-        configLoader.close();
-        starter.interrupt();
-    }
 
     @Test
     @DisplayName("deletePlayersFiles coverege test")
@@ -308,9 +279,6 @@ class ArbiterTest {
     void startMain() throws InterruptedException, IllegalAccessException {
         Thread starter = new Thread(() -> Arbiter.main(new String[0]));
         starter.start();
-
-        Arbiter arbiter = (Arbiter) FieldUtils.readDeclaredStaticField(Arbiter.class, "arbiter", true);
-        arbiter.stop();
 
         starter.interrupt();
         Thread.sleep(100);

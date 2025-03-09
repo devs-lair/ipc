@@ -1,59 +1,41 @@
 package devs.lair.ipc.balancer;
 
-import devs.lair.ipc.balancer.service.ConfigProvider;
+import devs.lair.ipc.balancer.service.ProcessStarter;
+import devs.lair.ipc.balancer.service.interfaces.ConfigurableProcess;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
-import static devs.lair.ipc.balancer.utils.Constants.INITIAL_PLAYER_COUNT_KEY;
+import static devs.lair.ipc.balancer.service.enums.ProcessType.PLAYER;
+import static java.lang.Thread.currentThread;
 
-public class PlayerProducer {
-    private static final String CLASS_PATH = "/home/devslair/prjs/ipc/balancer/target/classes";
-    private static final String MAIN_CLASS = "devs.lair.ipc.balancer.Player";
-    private static final String[] COMMANDS = {"java", "-cp", CLASS_PATH, MAIN_CLASS};
-
+public class PlayerProducer extends ConfigurableProcess {
     private final Set<Process> players = new HashSet<>();
-    private final ConfigProvider configProvider = new ConfigProvider();
-    private final ProcessBuilder processBuilder = new ProcessBuilder();
-
-    private boolean isStop = false;
 
     public void startProduce() {
-        Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
-
-        configProvider.init();
-        int initialPlayerCount = configProvider.readPositiveInt(INITIAL_PLAYER_COUNT_KEY, 2);
+        super.start();
         int currentCount = 1;
 
         try {
-            while (!isStop) {
-                if (currentCount < initialPlayerCount
-                        || currentCount <= configProvider.getMaxPlayerCount()) {
-                    players.add(processBuilder.command(COMMANDS).start());
-                    System.out.println("Стартовал процесс игрока с номером " + currentCount);
-                    currentCount++;
+            while (!currentThread().isInterrupted()) {
+                if (currentCount++ <= configProvider.getMaxPlayerCount()) {
+                    players.add(ProcessStarter.startProcess(PLAYER).getProcess());
                 }
 
                 players.removeIf(p -> !p.isAlive());
-                Thread.sleep(currentCount > initialPlayerCount
-                        ? configProvider.getSpawnPeriod() : 10);
+                Thread.sleep(configProvider.getSpawnPeriod());
             }
-        } catch (IOException e) {
-            throw new IllegalStateException("При создании процесса произошла ошибка");
         } catch (InterruptedException e) {
-            throw new IllegalStateException("Процесс был прерван");
+            System.out.println("Процесс был прерван");
         }
     }
 
     public void stop() {
-        isStop = true;
-        configProvider.close();
+        super.stop();
         players.forEach(Process::destroy);
     }
 
-    private static PlayerProducer pp; //for tests
     public static void main(String[] args) {
-        (pp = new PlayerProducer()).startProduce();
+        new PlayerProducer().startProduce();
     }
 }

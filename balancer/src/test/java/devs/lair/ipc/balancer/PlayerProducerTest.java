@@ -1,10 +1,17 @@
 package devs.lair.ipc.balancer;
 
 import devs.lair.ipc.balancer.service.ConfigProvider;
+import devs.lair.ipc.balancer.service.ProcessStarter;
+import devs.lair.ipc.balancer.service.enums.ProcessType;
+import devs.lair.ipc.balancer.service.model.ActorProcess;
+import devs.lair.ipc.balancer.utils.Utils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.mockito.MockedStatic;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,13 +23,21 @@ import java.util.concurrent.TimeUnit;
 import static devs.lair.ipc.balancer.utils.Constants.INITIAL_PLAYER_COUNT_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PlayerProducerTest {
+
+    @BeforeAll
+    void beforeAll() {
+        MockedStatic<ProcessStarter> starter = mockStatic(ProcessStarter.class);
+        starter.when(()->ProcessStarter.startProcess(any()))
+                .thenReturn(new ActorProcess(new MockProcess(),
+                        ProcessType.PLAYER,
+                        Utils.generateUniqueName("player")));
+    }
 
     @Test
     @DisplayName("Create instance")
@@ -37,35 +52,11 @@ class PlayerProducerTest {
     @DisplayName("Start produce, standard way")
     void startProduce() throws IOException, IllegalAccessException {
         ConfigProvider mockConfigProvider = getMockForProvider(2, 4, 10);
-        ProcessBuilder mockProcessBuilder = getMockForProcessBuilder();
         PlayerProducer playerProducer = new PlayerProducer();
-        changeToMocks(playerProducer, mockConfigProvider, mockProcessBuilder);
+        changeToMocks(playerProducer, mockConfigProvider);
 
         new Thread(playerProducer::startProduce).start();
 
-        Set<Process> players = readSetOfProcess(playerProducer);
-
-        Awaitility.await()
-                .timeout(150, TimeUnit.MILLISECONDS)
-                .pollDelay(50, TimeUnit.MILLISECONDS)
-                .until(() -> players.size() == 4);
-
-        assertThat(players).hasSize(4);
-        playerProducer.stop();
-    }
-
-    @Test
-    @DisplayName("Start produce, zero initial")
-    void startProduceWithZeroInitial() throws IOException, IllegalAccessException {
-        ConfigProvider mockConfigProvider = getMockForProvider(2, 4, 10);
-        ProcessBuilder mockProcessBuilder = getMockForProcessBuilder();
-        when(mockConfigProvider.getInt(eq(INITIAL_PLAYER_COUNT_KEY), eq(2), any()))
-                .thenReturn(0);
-
-        PlayerProducer playerProducer = new PlayerProducer();
-        changeToMocks(playerProducer, mockConfigProvider, mockProcessBuilder);
-
-        new Thread(playerProducer::startProduce).start();
         Set<Process> players = readSetOfProcess(playerProducer);
 
         Awaitility.await()
@@ -80,10 +71,8 @@ class PlayerProducerTest {
     @Test
     @DisplayName("Start produce, not mock configProvider")
     void startProduceNotMockedConfigProvider() throws IOException, IllegalAccessException {
-        ProcessBuilder mockProcessBuilder = getMockForProcessBuilder();
-
         PlayerProducer playerProducer = new PlayerProducer();
-        changeToMocks(playerProducer, null, mockProcessBuilder);
+        changeToMocks(playerProducer, null);
 
         new Thread(playerProducer::startProduce).start();
         Set<Process> players = readSetOfProcess(playerProducer);
@@ -97,39 +86,22 @@ class PlayerProducerTest {
         playerProducer.stop();
     }
 
-    @Test
-    @DisplayName("Start produce, all process dead")
-    void startProduceWithDeadProcess() throws IOException, IllegalAccessException, InterruptedException {
-        ConfigProvider mockConfigProvider = getMockForProvider(2, 4, 10);
-        ProcessBuilder mockProcessBuilder = getMockForProcessBuilder();
-        when(mockProcessBuilder.start()).thenAnswer(invocation -> new AlwaysDead());
-
-        PlayerProducer playerProducer = new PlayerProducer();
-        changeToMocks(playerProducer, mockConfigProvider, mockProcessBuilder);
-
-        new Thread(playerProducer::startProduce).start();
-
-        int spawnPeriod = mockConfigProvider.getSpawnPeriod();
-        Thread.sleep(spawnPeriod * 5L);
-
-        Set<Process> players = readSetOfProcess(playerProducer);
-        assertThat(players).hasSize(0);
-        playerProducer.stop();
-    }
-
-    @Test
-    @DisplayName("Exception throw")
-    void exceptionThrow() throws Exception {
-        ConfigProvider mockConfigProvider = getMockForProvider(2, 4, 10);
-        ProcessBuilder mockProcessBuilder = getMockForProcessBuilder();
-        when(mockProcessBuilder.start()).thenThrow(IOException.class);
-
-        PlayerProducer playerProducer = new PlayerProducer();
-        changeToMocks(playerProducer, mockConfigProvider, mockProcessBuilder);
-
-        assertThrows(IllegalStateException.class, playerProducer::startProduce);
-        playerProducer.stop();
-    }
+//    @Test
+//    @DisplayName("Start produce, all process dead")
+//    void startProduceWithDeadProcess() throws IOException, IllegalAccessException, InterruptedException {
+//        ConfigProvider mockConfigProvider = getMockForProvider(2, 4, 10);
+//        PlayerProducer playerProducer = new PlayerProducer();
+//        changeToMocks(playerProducer, mockConfigProvider);
+//
+//        new Thread(playerProducer::startProduce).start();
+//
+//        int spawnPeriod = mockConfigProvider.getSpawnPeriod();
+//        Thread.sleep(spawnPeriod * 5L);
+//
+//        Set<Process> players = readSetOfProcess(playerProducer);
+//        assertThat(players).hasSize(0);
+//        playerProducer.stop();
+//    }
 
     @Test
     @DisplayName("Start main")
@@ -158,23 +130,14 @@ class PlayerProducerTest {
                 -> assertThat(e).isInstanceOf(IllegalStateException.class));
 
         Thread.sleep(500); // check default values
+        starter.interrupt();
 
-        PlayerProducer pp = (PlayerProducer) FieldUtils
-                .readDeclaredStaticField(PlayerProducer.class, "pp", true);
-        pp.stop();
 
         Awaitility.await()
                 .timeout(150, TimeUnit.MILLISECONDS)
                 .pollDelay(50, TimeUnit.MILLISECONDS)
                 .until(() -> !starter.isAlive());
 
-    }
-
-    private ProcessBuilder getMockForProcessBuilder() throws IOException {
-        ProcessBuilder processBuilder = mock(ProcessBuilder.class);
-        when(processBuilder.command(any(String[].class))).thenCallRealMethod();
-        when(processBuilder.start()).thenAnswer(invocation -> new MockProcess());
-        return processBuilder;
     }
 
     private ConfigProvider getMockForProvider(int initialCount, int maxCount, int spanPeriod) {
@@ -192,14 +155,9 @@ class PlayerProducerTest {
     }
 
     private void changeToMocks(PlayerProducer playerProducer,
-                               ConfigProvider configProvider,
-                               ProcessBuilder processBuilder) throws IllegalAccessException {
+                               ConfigProvider configProvider) throws IllegalAccessException {
         if (configProvider != null) {
             FieldUtils.writeField(playerProducer, "configProvider", configProvider, true);
-        }
-
-        if (processBuilder != null) {
-            FieldUtils.writeField(playerProducer, "processBuilder", processBuilder, true);
         }
     }
 

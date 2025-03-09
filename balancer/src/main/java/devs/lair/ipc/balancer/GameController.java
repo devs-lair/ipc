@@ -5,27 +5,30 @@ import devs.lair.ipc.balancer.service.PlayerProvider;
 import devs.lair.ipc.balancer.service.ProcessStarter;
 import devs.lair.ipc.balancer.service.model.ActorProcess;
 
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
 import static devs.lair.ipc.balancer.service.enums.ProcessType.*;
+import static devs.lair.ipc.balancer.utils.Constants.MEMORY_CONFIG_PATH;
 
 public class GameController {
     private final PlayerProvider playerProvider = new PlayerProvider();
-    private final ProcessStarter starter = new ProcessStarter();
     private final Balancer balancer = new Balancer();
     private final List<ActorProcess> actors = new ArrayList<>();
 
     public void init() {
         try {
-            //Order
-            playerProvider.init();
+            //! Order !
 
             Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
+            playerProvider.init();
 
-            actors.add(starter.startProcess(CONFIG_LOADER));
-            actors.add(starter.startProcess(PLAYER_PRODUCER));
-            balancer.init(actors, starter, playerProvider);
+            actors.add(ProcessStarter.startProcess(CONFIG_LOADER));
+            waitConfigLoaderStarted();
+
+            actors.add(ProcessStarter.startProcess(PLAYER_PRODUCER));
+            balancer.init(actors, playerProvider);
 
             while (true) {
                 Thread.sleep(1000);
@@ -34,6 +37,17 @@ public class GameController {
 
         } catch (Exception ex) {
             System.out.println("При инициализации произошла ошибка: " + ex.getMessage());
+        }
+    }
+
+    private void waitConfigLoaderStarted() {
+        try {
+            while (!Files.exists(MEMORY_CONFIG_PATH)) {
+                Thread.sleep(10);
+            }
+
+        } catch (InterruptedException e) {
+            System.out.println("Основной поток был прерван");
         }
     }
 
