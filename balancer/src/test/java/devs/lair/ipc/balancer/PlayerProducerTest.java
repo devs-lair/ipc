@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.mockito.MockedStatic;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Objects;
@@ -50,7 +49,7 @@ class PlayerProducerTest {
 
     @Test
     @DisplayName("Start produce, standard way")
-    void startProduce() throws IOException, IllegalAccessException {
+    void startProduce() throws IllegalAccessException {
         ConfigProvider mockConfigProvider = getMockForProvider(2, 4, 10);
         PlayerProducer playerProducer = new PlayerProducer();
         changeToMocks(playerProducer, mockConfigProvider);
@@ -70,7 +69,7 @@ class PlayerProducerTest {
 
     @Test
     @DisplayName("Start produce, not mock configProvider")
-    void startProduceNotMockedConfigProvider() throws IOException, IllegalAccessException {
+    void startProduceNotMockedConfigProvider() throws IllegalAccessException {
         PlayerProducer playerProducer = new PlayerProducer();
         changeToMocks(playerProducer, null);
 
@@ -145,7 +144,7 @@ class PlayerProducerTest {
         when(configProvider.getInt(eq(INITIAL_PLAYER_COUNT_KEY), eq(2), any()))
                 .thenReturn(initialCount);
         when(configProvider.getMaxPlayerCount()).thenReturn(maxCount);
-        when(configProvider.getSpawnPeriod()).thenReturn(spanPeriod);
+        when(configProvider.getProducerTick()).thenReturn(spanPeriod);
         return configProvider;
     }
 
@@ -215,13 +214,6 @@ class PlayerProducerTest {
         @Override
         public int hashCode() {
             return Objects.hashCode(pid);
-        }
-    }
-
-    static class AlwaysDead extends MockProcess {
-        @Override
-        public boolean isAlive() {
-            return false;
         }
     }
 }

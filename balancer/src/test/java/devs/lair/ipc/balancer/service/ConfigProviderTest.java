@@ -77,7 +77,7 @@ class ConfigProviderTest {
             assertThat(configProvider.getArbiterTick()).isPositive();
             assertThat(configProvider.getMaxRound()).isPositive();
             assertThat(configProvider.getMaxPlayerCount()).isPositive();
-            assertThat(configProvider.getSpawnPeriod()).isPositive();
+            assertThat(configProvider.getProducerTick()).isPositive();
 
             assertDoesNotThrow(configProvider::loadConfig);
 

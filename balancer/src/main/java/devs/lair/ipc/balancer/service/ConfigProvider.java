@@ -29,7 +29,7 @@ public class ConfigProvider implements AutoCloseable {
     private int playerTick = 500;
     private int arbiterTick = 500;
     private int maxPlayerCount = 4;
-    private int spawnPeriod = 100;
+    private int producerTick = 100;
     private int maxRound = 5;
 
     public ConfigProvider() {
@@ -93,7 +93,7 @@ public class ConfigProvider implements AutoCloseable {
 
         //Producer params
         maxPlayerCount = readPositiveInt("producer.maxPlayers", maxPlayerCount);
-        spawnPeriod = readPositiveInt("producer.spawnPeriod", spawnPeriod);
+        producerTick = readPositiveInt("producer.tick", producerTick);
     }
 
     private void reloadProperties() {
@@ -156,8 +156,8 @@ public class ConfigProvider implements AutoCloseable {
         return maxPlayerCount;
     }
 
-    public int getSpawnPeriod() {
-        return spawnPeriod;
+    public int getProducerTick() {
+        return producerTick;
     }
 
     public int getMaxRound() {

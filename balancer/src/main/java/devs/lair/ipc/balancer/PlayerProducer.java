@@ -24,7 +24,7 @@ public class PlayerProducer extends ConfigurableProcess {
                 }
 
                 players.removeIf(p -> !p.isAlive());
-                Thread.sleep(configProvider.getSpawnPeriod());
+                Thread.sleep(configProvider.getProducerTick());
             }
         } catch (InterruptedException e) {
             System.out.println("Процесс был прерван");
