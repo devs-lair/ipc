@@ -6,6 +6,8 @@ import devs.lair.ipc.balancer.utils.Move;
 import sun.misc.Signal;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -28,8 +30,9 @@ public class Arbiter extends ConfigurableProcess {
     private boolean terminate = false;
 
     public void start() {
-        super.start();
+        System.setOut(new PrintStream(OutputStream.nullOutputStream()));
 
+        super.start();
         Signal.handle(new Signal("TERM"), sig -> terminate = true);
 
         try {
@@ -49,6 +52,7 @@ public class Arbiter extends ConfigurableProcess {
             System.out.println("Остановлен по сигналу");
         }
 
+        removeShutdownHook();
         stop();
     }
 
@@ -87,13 +91,15 @@ public class Arbiter extends ConfigurableProcess {
 
     private void returnPlayers() {
         try {
-            for (String player : players) {
-                if (player != null) {
+            for (int i = 0; i < 2; i++) {
+                String player = players[i];
+                if (player!=null) {
                     playerProvider.returnPlayer(player);
+                    players[i] = null;
                 }
             }
         } catch (RemoteException e) {
-            System.out.println("Ну удалось вернуть игрока");
+            System.out.println("Не удалось вернуть игрока");
         } catch (NullPointerException e) {
             System.out.println("Нет playerProvider");
         }
@@ -145,7 +151,7 @@ public class Arbiter extends ConfigurableProcess {
                     continue;
                 }
                 return Move.valueOf(Files.readAllBytes(playerFile));
-            } while (attempt++ <= configProvider.readPositiveInt(MAX_ATTEMPT_KEY, 5));
+            } while (++attempt <= configProvider.readPositiveInt(MAX_ATTEMPT_KEY, 5));
         } catch (Exception e) {
             switch (e) {
                 case NoSuchFileException nsfe -> System.out.printf("Нет файла для игрока %s\n", playerName);

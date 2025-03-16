@@ -23,7 +23,7 @@ public class ActorProcess {
     }
 
     public ActorProcess(Process process, ProcessType type) {
-        this(process, type, Utils.generateUniqueName(null,
+        this(process, type, Utils.generateUniqueName(
                 type.toString().toLowerCase()));
     }
 

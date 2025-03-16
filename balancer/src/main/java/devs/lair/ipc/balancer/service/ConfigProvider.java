@@ -51,7 +51,7 @@ public class ConfigProvider implements AutoCloseable {
                 if (memory == null) initMemoryBuffer();
 
                 if (memory.get(0) > currentVersion) {
-                    currentVersion = memory.get(0);
+                    currentVersion++;
                     readConfig();
                 }
             }

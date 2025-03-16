@@ -14,8 +14,8 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
@@ -26,8 +26,11 @@ import static devs.lair.ipc.balancer.utils.Utils.getPathFromName;
 
 public class PlayerProvider implements IPlayerProvider {
 
-    private final BlockingQueue<String> players = new ArrayBlockingQueue<>(1024);
+    private final Queue<String> players = new ConcurrentLinkedQueue<>();
     private final AtomicInteger provided = new AtomicInteger(0);
+    private final AtomicInteger returned = new AtomicInteger(0);
+    private final AtomicInteger removed = new AtomicInteger(0);
+    private final AtomicInteger added = new AtomicInteger(0);
     private DirWatcher dirWatcher;
 
     @Override
@@ -38,14 +41,15 @@ public class PlayerProvider implements IPlayerProvider {
             provided.incrementAndGet();
             return playerName;
         }
-
         return null;
     }
 
     @Override
-    public void returnPlayer(String player) throws RemoteException {
-        players.add(player);
-        provided.decrementAndGet();
+    public void returnPlayer(String playerName) throws RemoteException {
+        if (playerName != null && Files.exists(getPathFromName(playerName))) {
+            players.add(playerName);
+            returned.incrementAndGet();
+        }
     }
 
     public void init() {
@@ -78,16 +82,16 @@ public class PlayerProvider implements IPlayerProvider {
             @Override
             public void onCreate(WatchEvent<Path> event) {
                 Path eventPath = event.context();
-                if (eventPath.getFileName().toString().contains(PLAYER_FILE_SUFFIX)) {
-                    String playerName = getNameFromPath(eventPath);
-                    players.add(playerName);
-                }
+                String playerName = getNameFromPath(eventPath);
+                players.add(playerName);
+                added.incrementAndGet();
             }
 
             @Override
             public void onDelete(WatchEvent<Path> event, boolean isDirectory) {
                 String removedPlayerName = getNameFromPath(event.context());
                 players.remove(removedPlayerName);
+                removed.incrementAndGet();
             }
         });
         dirWatcher.startWatch();
@@ -117,6 +121,6 @@ public class PlayerProvider implements IPlayerProvider {
     }
 
     public int getProviderPlayersCount() {
-        return provided.get();
+        return removed.get();
     }
 }

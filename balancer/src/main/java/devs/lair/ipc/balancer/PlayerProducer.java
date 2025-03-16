@@ -3,6 +3,8 @@ package devs.lair.ipc.balancer;
 import devs.lair.ipc.balancer.service.ProcessStarter;
 import devs.lair.ipc.balancer.service.interfaces.ConfigurableProcess;
 
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -11,14 +13,17 @@ import static java.lang.Thread.currentThread;
 
 public class PlayerProducer extends ConfigurableProcess {
     private final Set<Process> players = new HashSet<>();
+    int currentCount = 0;
+    int maxCount = 0;
 
     public void startProduce() {
+        System.setOut(new PrintStream(OutputStream.nullOutputStream()));
         super.start();
-        int currentCount = 1;
 
         try {
             while (!currentThread().isInterrupted()) {
-                if (currentCount <= configProvider.getMaxPlayerCount()) {
+                maxCount = configProvider.getMaxPlayerCount();
+                if (currentCount < maxCount) {
                     players.add(ProcessStarter.startProcess(PLAYER).getProcess());
                     currentCount++;
                 }

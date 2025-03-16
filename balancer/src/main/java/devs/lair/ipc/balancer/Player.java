@@ -10,6 +10,7 @@ import java.nio.file.Path;
 
 import static devs.lair.ipc.balancer.utils.Utils.*;
 import static java.lang.Thread.currentThread;
+import static java.nio.file.StandardOpenOption.WRITE;
 
 public class Player extends ConfigurableProcess {
     private final String name;
@@ -29,7 +30,7 @@ public class Player extends ConfigurableProcess {
 
             while (!currentThread().isInterrupted()) {
                 if (Files.size(playerFile) == 0) {
-                    Files.write(playerFile, Move.getRandomMoveBytes());
+                    Files.write(playerFile, Move.getRandomMoveBytes(), WRITE);
                 }
                 Thread.sleep(configProvider.getPlayerTick());
             }

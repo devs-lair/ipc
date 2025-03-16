@@ -15,12 +15,15 @@ public class ProcessStarter {
             .getCodeSource().getLocation().getPath();
 
     private static final List<String> commands = List.of("java", "-cp", CLASS_PATH);
+    private static final List<String> commands2 = List.of("java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-cp", CLASS_PATH);
 
     public static ActorProcess startProcess(ProcessType type, String[] args) {
         if (type == null)
             throw new IllegalArgumentException("Необходимо передать тип");
 
         try {
+            //List<String> executeLine = new ArrayList<>(type == ProcessType.PLAYER_PRODUCER ? commands2 : commands);
+
             List<String> executeLine = new ArrayList<>(commands);
             executeLine.add(type.getMainClass().getCanonicalName());
             if (args != null) {
