@@ -34,7 +34,7 @@ class ArbiterTest {
     @DisplayName("Create instance")
     void createInstancePositive() {
         assertDoesNotThrow((() -> {
-            Arbiter arbiter = new Arbiter();
+            Arbiter arbiter = new Arbiter(null);
             arbiter.stop();
         }));
     }
@@ -130,7 +130,7 @@ class ArbiterTest {
     @Test
     @DisplayName("Start with mocks, players file exists")
     void startWithMocksPlayerFilesExists() throws IOException, IllegalAccessException {
-        Arbiter arbiter = new Arbiter();
+        Arbiter arbiter = new Arbiter(null);
 
         ConfigProvider configProvider = getSpyForConfigProvider();
         IPlayerProvider playerProvider = getSpyForPlayerProvider();
@@ -156,7 +156,7 @@ class ArbiterTest {
     @Test
     @DisplayName("Start with player answer")
     void playerAnswer() throws Exception {
-        Arbiter arbiter = new Arbiter();
+        Arbiter arbiter = new Arbiter(null);
 
         ConfigProvider configProvider = getSpyForConfigProvider();
         IPlayerProvider playerProvider = getSpyForPlayerProvider();
@@ -181,7 +181,7 @@ class ArbiterTest {
     @Test
     @DisplayName("Start with player wrong answer")
     void playerAnswerWrong() throws Exception {
-        Arbiter arbiter = new Arbiter();
+        Arbiter arbiter = new Arbiter(null);
 
         ConfigProvider configProvider = getSpyForConfigProvider();
         IPlayerProvider playerProvider = getSpyForPlayerProvider();
@@ -207,7 +207,7 @@ class ArbiterTest {
     @Test
     @DisplayName("Only one player ready")
     void playerOnlyOneReady() throws Exception {
-        Arbiter arbiter = new Arbiter();
+        Arbiter arbiter = new Arbiter(null);
 
         ConfigProvider configProvider = getSpyForConfigProvider();
         IPlayerProvider playerProvider = getSpyForPlayerProvider();
@@ -237,7 +237,7 @@ class ArbiterTest {
     @Test
     @DisplayName("Player random fails")
     void playerAnswerWrongRandom() throws Exception {
-        Arbiter arbiter = new Arbiter();
+        Arbiter arbiter = new Arbiter(null);
 
         ConfigProvider configProvider = getSpyForConfigProvider();
         IPlayerProvider playerProvider = getSpyForPlayerProvider();
@@ -264,7 +264,7 @@ class ArbiterTest {
     @Test
     @DisplayName("deletePlayersFiles coverege test")
     void deletePlayersFilesCoverageTest() throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
-        Arbiter arbiter = new Arbiter();
+        Arbiter arbiter = new Arbiter(null);
 
         MethodUtils.invokeMethod(arbiter, true, "deletePlayersFiles");
 
@@ -275,7 +275,7 @@ class ArbiterTest {
     @Test
     @DisplayName("Exception on clear file, coverage test")
     void clearPlayersFilesTest() throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
-        Arbiter arbiter = new Arbiter();
+        Arbiter arbiter = new Arbiter(null);
 
         FieldUtils.writeField(arbiter, "players", new String[]{"one", "two"}, true);
 
@@ -287,7 +287,7 @@ class ArbiterTest {
 
     @Test
     @DisplayName("Start main, coverage test")
-    void startMain() throws InterruptedException, IllegalAccessException {
+    void startMain() throws InterruptedException {
         Thread starter = new Thread(() -> Arbiter.main(new String[0]));
         starter.start();
 

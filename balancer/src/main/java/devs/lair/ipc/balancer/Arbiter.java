@@ -3,21 +3,21 @@ package devs.lair.ipc.balancer;
 import devs.lair.ipc.balancer.service.interfaces.ConfigurableProcess;
 import devs.lair.ipc.balancer.service.interfaces.IPlayerProvider;
 import devs.lair.ipc.balancer.utils.Move;
+import devs.lair.ipc.balancer.utils.Utils;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
+import java.nio.file.*;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
+import static devs.lair.ipc.balancer.service.enums.ProcessType.ARBITER;
+import static devs.lair.ipc.balancer.utils.Constants.ARBITER_DIR;
 import static devs.lair.ipc.balancer.utils.Constants.MAX_ATTEMPT_KEY;
-import static devs.lair.ipc.balancer.utils.Utils.getPathFromName;
-import static devs.lair.ipc.balancer.utils.Utils.tryDelete;
+import static devs.lair.ipc.balancer.utils.Utils.*;
 import static java.lang.Thread.currentThread;
 
 public class Arbiter extends ConfigurableProcess {
@@ -27,10 +27,21 @@ public class Arbiter extends ConfigurableProcess {
 
     private int roundNumber = 1;
 
+    public Arbiter(String name) {
+        this.name = name == null
+                ? generateUniqueName(ARBITER.name().toLowerCase())
+                : name;
+    }
+
     public void start() {
         System.setOut(new PrintStream(OutputStream.nullOutputStream()));
 
+        Path arbiterFile = Paths.get(ARBITER_DIR + "/" + name);
         try {
+            //Move to system check
+            createDirectoryIfNotExist(arbiterFile.getParent());
+            Files.createFile(arbiterFile);
+
             while (!currentThread().isInterrupted()) {
                 fetchPlayers();
 
@@ -39,19 +50,19 @@ public class Arbiter extends ConfigurableProcess {
                     fetchPlayersMove();
                     fetchResult();
                 }
+
                 Thread.sleep(configProvider.getArbiterTick());
             }
+        } catch (FileAlreadyExistsException e) {
+            System.out.println("Арбитр с именем " + name + " уже запущен " + e.getMessage());
         } catch (InterruptedException e) {
             System.out.println("Основной поток был прерван");
-        } catch (IllegalStateException e) {
-            System.out.println("Остановлен по сигналу");
+        } catch (IOException e) {
+            System.out.println("Ошибка при создании файла арбитра");
+        } finally {
+            tryDelete(arbiterFile);
         }
 
-        stop();
-    }
-
-    public void stop() {
-        super.stop();
         returnPlayers();
     }
 
@@ -206,6 +217,6 @@ public class Arbiter extends ConfigurableProcess {
     }
 
     public static void main(String[] args) {
-        new Arbiter().start();
+        new Arbiter(Utils.isNullOrEmpty(args) ? null : args[0]).start();
     }
 }

@@ -7,6 +7,7 @@ public class Constants {
     public static final String BASE_DIR = getBaseDir();
     public static final String PLAYER_DIR = BASE_DIR + "players";
     public static final String CONFIG_DIR = BASE_DIR + "config";
+    public static final String ARBITER_DIR = BASE_DIR + "arbiters";
 
     public static final String CONFIG_FILE = "config.properties";
     public static final String MEMORY_CONFIG_FILE = "memory.config";
@@ -20,6 +21,7 @@ public class Constants {
     public static int WAIT_OTHERS_TIMEOUT = 25;
     public static final Path CONFIG_PATH = Paths.get(CONFIG_DIR + "/" + CONFIG_FILE);
     public static final Path MEMORY_CONFIG_PATH = Paths.get(CONFIG_DIR + "/" + MEMORY_CONFIG_FILE);
+
     private Constants() {
     }
 

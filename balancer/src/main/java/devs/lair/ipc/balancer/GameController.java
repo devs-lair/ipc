@@ -26,7 +26,7 @@ public class GameController {
             playerProvider.init();
 
             actors.add(ProcessStarter.startProcess(CONFIG_LOADER));
-            waitConfigLoaderStarted();
+            waitConfigLoaderStarted(); //not necessary
 
             actors.add(ProcessStarter.startProcess(PLAYER_PRODUCER));
             balancer.init(playerProvider);
@@ -48,8 +48,8 @@ public class GameController {
     }
 
     public void stop() {
-        actors.forEach(ActorProcess::terminate);
         balancer.close();
+        actors.forEach(ActorProcess::terminate);
     }
 
     private void printStatus() {

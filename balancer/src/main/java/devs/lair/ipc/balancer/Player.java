@@ -27,8 +27,8 @@ public class Player extends ConfigurableProcess {
     public void start() {
         System.setOut(new PrintStream(OutputStream.nullOutputStream()));
 
+        Path playerFile = getPathFromName(name);
         try (configProvider) {
-            Path playerFile = getPathFromName(name);
             //Move to system check
             createDirectoryIfNotExist(playerFile.getParent());
             Files.createFile(playerFile);
@@ -49,7 +49,7 @@ public class Player extends ConfigurableProcess {
         } catch (Exception e) {
             System.out.println("Произошла непредвиденная ошибка: " + e.getMessage());
         } finally {
-            tryDelete(getPathFromName(name));
+            tryDelete(playerFile);
         }
     }
 

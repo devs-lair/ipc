@@ -10,14 +10,14 @@ import java.util.List;
 import static devs.lair.ipc.balancer.service.enums.ProcessType.ARBITER;
 
 public class Balancer implements AutoCloseable {
-    private Thread worker;
-    private boolean isStop = false;
     private final List<ActorProcess> arbiters = new ArrayList<>();
+
+    private Thread worker;
 
     public void init(PlayerProvider playerProvider) {
         worker = new Thread(() -> {
             try {
-                while (!isStop) {
+                while (!worker.isInterrupted()) {
                     long arbitersCount = arbiters.size();
 
                     if (arbitersCount == 0 || playerProvider.getQuerySize() > 10) {
@@ -56,7 +56,6 @@ public class Balancer implements AutoCloseable {
 
     @Override
     public void close() {
-        isStop = true;
         arbiters.forEach(ActorProcess::terminate);
         if (worker != null) {
             worker.interrupt();
