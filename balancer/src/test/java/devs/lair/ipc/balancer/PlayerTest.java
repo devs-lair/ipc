@@ -21,7 +21,7 @@ class PlayerTest {
     @DisplayName("Create instance, mock config provider")
     void createInstanceMockConfigProvider() {
         assertDoesNotThrow(() -> {
-            Player player = new Player();
+            Player player = new Player(null);
             writeMock(player, mockConfigProvider());
             player.stop();
         });
@@ -31,7 +31,7 @@ class PlayerTest {
     @DisplayName("Create instance, mock config provider")
     void createInstanceMockConfigProviderWithName() {
         assertDoesNotThrow(() -> {
-            Player player = new Player();
+            Player player = new Player(null);
             writeMock(player, mockConfigProvider());
             player.stop();
         });
@@ -40,7 +40,7 @@ class PlayerTest {
     @Test
     @DisplayName("Already in game")
     void alreadyInGame() throws IOException, IllegalAccessException {
-        Player player = new Player();
+        Player player = new Player(null);
         String name = (String) FieldUtils.readField(player, "name", true);
 
         Path pathFromName = Utils.getPathFromName(name);
@@ -53,7 +53,7 @@ class PlayerTest {
     @Test
     @DisplayName("Exception on createFile")
     void exceptionOnFileCreate() {
-        Player player = new Player();
+        Player player = new Player(null);
         MockedStatic<Files> files = mockStatic(Files.class);
         files.when(()->Files.createFile(any())).thenThrow(new IOException());
         assertDoesNotThrow(player::start);

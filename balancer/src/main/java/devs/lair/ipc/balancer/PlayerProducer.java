@@ -5,25 +5,22 @@ import devs.lair.ipc.balancer.service.interfaces.ConfigurableProcess;
 
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 import static devs.lair.ipc.balancer.service.enums.ProcessType.PLAYER;
 import static java.lang.Thread.currentThread;
 
 public class PlayerProducer extends ConfigurableProcess {
-    private final Set<Process> players = new HashSet<>();
-    int currentCount = 0;
-    int maxCount = 0;
+    private final List<Process> players = new ArrayList<>();
+    private int currentCount = 0;
 
     public void startProduce() {
         System.setOut(new PrintStream(OutputStream.nullOutputStream()));
-        super.start();
 
-        try {
+        try (configProvider) {
             while (!currentThread().isInterrupted()) {
-                maxCount = configProvider.getMaxPlayerCount();
-                if (currentCount < maxCount) {
+                if (currentCount < configProvider.getMaxPlayerCount()) {
                     players.add(ProcessStarter.startProcess(PLAYER).getProcess());
                     currentCount++;
                 }
@@ -34,10 +31,14 @@ public class PlayerProducer extends ConfigurableProcess {
         } catch (InterruptedException e) {
             System.out.println("Процесс был прерван");
         }
-    }
 
-    public void stop() {
-        super.stop();
+        try {
+            //Need time to normally start ProcessStarter::startProcess
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            System.out.println("Процесс был прерван повторно");
+        }
+
         players.forEach(Process::destroy);
     }
 

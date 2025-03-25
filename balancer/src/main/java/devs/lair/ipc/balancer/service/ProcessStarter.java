@@ -3,6 +3,7 @@ package devs.lair.ipc.balancer.service;
 
 import devs.lair.ipc.balancer.service.enums.ProcessType;
 import devs.lair.ipc.balancer.service.model.ActorProcess;
+import devs.lair.ipc.balancer.utils.Utils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,27 +16,33 @@ public class ProcessStarter {
             .getCodeSource().getLocation().getPath();
 
     private static final List<String> commands = List.of("java", "-cp", CLASS_PATH);
-    private static final List<String> commands2 = List.of("java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-cp", CLASS_PATH);
 
-    public static ActorProcess startProcess(ProcessType type, String[] args) {
+    public static ActorProcess startProcess(ProcessType type, String[] args, boolean passName) {
         if (type == null)
             throw new IllegalArgumentException("Необходимо передать тип");
 
         try {
-            //List<String> executeLine = new ArrayList<>(type == ProcessType.PLAYER_PRODUCER ? commands2 : commands);
-
             List<String> executeLine = new ArrayList<>(commands);
             executeLine.add(type.getMainClass().getCanonicalName());
+
+            String name = Utils.generateUniqueName(
+                    type.toString().toLowerCase());
+
+            if (passName) {
+                executeLine.add(name);
+            }
+
             if (args != null) {
                 executeLine.addAll(Arrays.stream(args).toList());
             }
 
             Process process = processBuilder.command(executeLine).start();
-            ActorProcess actorProcess = new ActorProcess(process, type);
+            ActorProcess actorProcess = new ActorProcess(process, type, name);
+
             System.out.printf("Процесс был запущен: имя %s, тип %s, pid = %d \n",
                     actorProcess.getName(),
                     actorProcess.getType(),
-                    actorProcess.getProcess().pid() );
+                    actorProcess.getProcess().pid());
 
             return actorProcess;
         } catch (IOException e) {
@@ -45,6 +52,6 @@ public class ProcessStarter {
     }
 
     public static ActorProcess startProcess(ProcessType type) {
-        return startProcess(type, null);
+        return startProcess(type, null, true);
     }
 }

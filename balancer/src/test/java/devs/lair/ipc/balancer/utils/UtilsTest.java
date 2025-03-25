@@ -131,7 +131,7 @@ class UtilsTest {
     @Test
     @DisplayName("Is null or empty")
     void isNullOrEmptyTest() {
-        assertThat(Utils.isNullOrEmpty(null)).isTrue();
+        assertThat(Utils.isNullOrEmpty((String) null)).isTrue();
         assertThat(Utils.isNullOrEmpty("")).isTrue();
         assertThat(Utils.isNullOrEmpty("STRING")).isFalse();
     }

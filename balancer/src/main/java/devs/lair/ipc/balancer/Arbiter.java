@@ -3,7 +3,6 @@ package devs.lair.ipc.balancer;
 import devs.lair.ipc.balancer.service.interfaces.ConfigurableProcess;
 import devs.lair.ipc.balancer.service.interfaces.IPlayerProvider;
 import devs.lair.ipc.balancer.utils.Move;
-import sun.misc.Signal;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -27,13 +26,9 @@ public class Arbiter extends ConfigurableProcess {
     private IPlayerProvider playerProvider;
 
     private int roundNumber = 1;
-    private boolean terminate = false;
 
     public void start() {
         System.setOut(new PrintStream(OutputStream.nullOutputStream()));
-
-        super.start();
-        Signal.handle(new Signal("TERM"), sig -> terminate = true);
 
         try {
             while (!currentThread().isInterrupted()) {
@@ -52,7 +47,6 @@ public class Arbiter extends ConfigurableProcess {
             System.out.println("Остановлен по сигналу");
         }
 
-        removeShutdownHook();
         stop();
     }
 
@@ -65,7 +59,7 @@ public class Arbiter extends ConfigurableProcess {
         for (int i = 0; i < 2; i++) {
             String playerName = players[i];
             if (playerName == null || !Files.exists(getPathFromName(playerName))) {
-                if (terminate) throw new IllegalStateException();
+                if (interrupted) throw new IllegalStateException();
 
                 players[i] = fetchPlayerName();
                 roundNumber = 1;
@@ -93,7 +87,7 @@ public class Arbiter extends ConfigurableProcess {
         try {
             for (int i = 0; i < 2; i++) {
                 String player = players[i];
-                if (player!=null) {
+                if (player != null) {
                     playerProvider.returnPlayer(player);
                     players[i] = null;
                 }
@@ -122,7 +116,7 @@ public class Arbiter extends ConfigurableProcess {
             if (roundNumber++ >= configProvider.getMaxRound()) {
                 System.out.printf("Игроки %s и %s завершили игру \n\n", players[0], players[1]);
                 deletePlayersFiles();
-                if (terminate) {
+                if (interrupted) {
                     throw new IllegalStateException();
                 }
             }
@@ -162,9 +156,9 @@ public class Arbiter extends ConfigurableProcess {
         }
 
         //Убиваем зомби игрока, который есть, но не ходят
-        if (!tryDelete(getPathFromName(playerName))) {
-            System.out.println("Не удалось удалить файл зомби игрока" + playerName);
-        }
+//        if (!tryDelete(getPathFromName(playerName))) {
+//            System.out.println("Не удалось удалить файл зомби игрока" + playerName);
+//        }
         return null;
     }
 

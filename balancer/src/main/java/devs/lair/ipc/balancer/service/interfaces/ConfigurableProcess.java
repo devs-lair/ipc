@@ -1,24 +1,35 @@
 package devs.lair.ipc.balancer.service.interfaces;
 
 import devs.lair.ipc.balancer.service.ConfigProvider;
-
-import static java.lang.Thread.currentThread;
+import sun.misc.Signal;
 
 public abstract class ConfigurableProcess {
     protected final ConfigProvider configProvider = new ConfigProvider();
-    private final Thread shutdown = new Thread(this::stop);
+    protected Thread mainTread;
 
-    protected void start() {
-        Runtime.getRuntime().addShutdownHook(shutdown);
+    protected String name;
+    protected boolean interrupted = false;
+
+    public ConfigurableProcess() {
+        init();
+    }
+
+    protected void init() {
+        Signal.handle(new Signal("TERM"), sig -> stop());
+        Signal.handle(new Signal("INT"), sig -> stop());
+
         configProvider.init();
+        mainTread = Thread.currentThread();
     }
 
-    protected void stop() {
+    public void stop() {
         configProvider.close();
-        currentThread().interrupt();
-    }
 
-    protected void removeShutdownHook() {
-        Runtime.getRuntime().removeShutdownHook(shutdown);
+        if (mainTread != null) {
+            mainTread.interrupt();
+            mainTread = null;
+        }
+
+        interrupted = true;
     }
 }

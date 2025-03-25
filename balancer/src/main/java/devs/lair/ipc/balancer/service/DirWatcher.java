@@ -88,7 +88,7 @@ public class DirWatcher implements AutoCloseable {
                     break;
                 }
             }
-        });
+        }, "DirWatcher. Path = " + watchDir.getFileName());
 
         watchedThread.start();
     }

@@ -41,14 +41,9 @@ public class GameController {
         }
     }
 
-    private void waitConfigLoaderStarted() {
-        try {
-            while (!Files.exists(MEMORY_CONFIG_PATH)) {
-                Thread.sleep(10);
-            }
-
-        } catch (InterruptedException e) {
-            System.out.println("Основной поток был прерван");
+    private void waitConfigLoaderStarted() throws InterruptedException {
+        while (!Files.exists(MEMORY_CONFIG_PATH)) {
+            Thread.sleep(10);
         }
     }
 
@@ -67,10 +62,6 @@ public class GameController {
     }
 
     public static void main(String[] args) {
-        try {
-            new GameController().init();
-        } catch (Exception e) {
-            System.out.println("Произошла ошибка: " + e.getMessage());
-        }
+        new GameController().init();
     }
 }

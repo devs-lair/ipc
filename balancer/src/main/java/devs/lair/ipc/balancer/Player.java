@@ -2,29 +2,34 @@ package devs.lair.ipc.balancer;
 
 import devs.lair.ipc.balancer.service.interfaces.ConfigurableProcess;
 import devs.lair.ipc.balancer.utils.Move;
+import devs.lair.ipc.balancer.utils.Utils;
 
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 
+import static devs.lair.ipc.balancer.service.enums.ProcessType.PLAYER;
 import static devs.lair.ipc.balancer.utils.Utils.*;
 import static java.lang.Thread.currentThread;
 import static java.nio.file.StandardOpenOption.WRITE;
 
 public class Player extends ConfigurableProcess {
-    private final String name;
 
-    public Player() {
-        this.name = generateUniqueName("player");
+    public Player(String name) {
+        this.name = name  == null
+                ? generateUniqueName(PLAYER.name().toLowerCase())
+                : name;
     }
 
-    @Override
     public void start() {
-        super.start();
+        System.setOut(new PrintStream(OutputStream.nullOutputStream()));
 
-        try {
+        try (configProvider) {
             Path playerFile = getPathFromName(name);
+            //Move to system check
             createDirectoryIfNotExist(playerFile.getParent());
             Files.createFile(playerFile);
 
@@ -43,18 +48,12 @@ public class Player extends ConfigurableProcess {
             System.out.println("Основной поток был прерван");
         } catch (Exception e) {
             System.out.println("Произошла непредвиденная ошибка: " + e.getMessage());
+        } finally {
+            tryDelete(getPathFromName(name));
         }
-
-        stop();
-    }
-
-    @Override
-    public void stop() {
-        super.stop();
-        tryDelete(getPathFromName(name));
     }
 
     public static void main(String[] args) {
-        new Player().start();
+        new Player(Utils.isNullOrEmpty(args) ? null : args[0]).start();
     }
 }

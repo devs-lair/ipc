@@ -25,6 +25,11 @@ public class ConfigLoader implements AutoCloseable {
             throw new IllegalArgumentException("Нет файла конфигурации: "
                     + CONFIG_PATH.toAbsolutePath());
         }
+
+        if (Files.exists(MEMORY_CONFIG_PATH)) {
+            throw new IllegalStateException("Обнаружен файл в памяти, " +
+                    "возможно экземпляр Config Loader уже запущен");
+        }
     }
 
     public void init() {
@@ -95,6 +100,7 @@ public class ConfigLoader implements AutoCloseable {
     }
 
     private static ConfigLoader cl; //only for tests
+
     public static void main(String[] args) {
         cl = new ConfigLoader();
         cl.init();

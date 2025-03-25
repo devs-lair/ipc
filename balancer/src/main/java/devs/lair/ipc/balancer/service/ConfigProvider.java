@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.util.Properties;
 import java.util.function.Predicate;
 
@@ -47,17 +48,19 @@ public class ConfigProvider implements AutoCloseable {
 
     public void loadConfig() {
         try {
-            if (Files.exists(MEMORY_CONFIG_PATH)) {
-                if (memory == null) initMemoryBuffer();
+            if (!Files.exists(MEMORY_CONFIG_PATH)) {
+                throw new NoSuchFileException(MEMORY_CONFIG_FILE);
+            }
 
-                if (memory.get(0) > currentVersion) {
-                    currentVersion++;
-                    readConfig();
-                }
+            if (memory == null) initMemoryBuffer();
+            if (memory.get(0) > currentVersion) {
+                currentVersion++;
+                readConfig();
             }
         } catch (Exception e) {
+            //Maybe write log
             memory = null;
-            System.out.println("Ошибка при чтении конфига из памяти: " + e.getMessage());
+            currentVersion = 0;
         }
     }
 
@@ -77,7 +80,7 @@ public class ConfigProvider implements AutoCloseable {
                     break;
                 }
             }
-        });
+        }, "Config Provider Thread");
         watchThread.start();
     }
 
@@ -117,6 +120,8 @@ public class ConfigProvider implements AutoCloseable {
 
     @Override
     public void close() {
+        if (isStop) return;
+
         isStop = true;
         if (watchThread != null) {
             watchThread.interrupt();

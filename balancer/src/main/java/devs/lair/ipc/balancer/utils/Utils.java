@@ -66,6 +66,10 @@ public class Utils {
         return s == null || s.isEmpty();
     }
 
+    public static boolean isNullOrEmpty(String[] s) {
+        return s == null || s.length == 0;
+    }
+
     public static void throwIllegalState(String message, Throwable throwable) {
         throw new IllegalStateException(message, throwable);
     }
