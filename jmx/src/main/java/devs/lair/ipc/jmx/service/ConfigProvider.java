@@ -1,9 +1,14 @@
 package devs.lair.ipc.jmx.service;
 
+import devs.lair.ipc.jmx.service.interfaces.ConfigProviderMBean;
 import devs.lair.ipc.jmx.utils.Utils;
 
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import javax.management.StandardMBean;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -14,7 +19,7 @@ import java.util.function.Predicate;
 import static devs.lair.ipc.jmx.utils.Constants.*;
 import static java.nio.file.StandardOpenOption.READ;
 
-public class ConfigProvider implements AutoCloseable {
+public class ConfigProvider implements AutoCloseable, ConfigProviderMBean {
     private final Properties props = new Properties();
 
     private MappedByteBuffer memory;
@@ -42,8 +47,20 @@ public class ConfigProvider implements AutoCloseable {
     }
 
     public void init() {
+        registerMBean();
         loadConfig();
         startWatch();
+    }
+
+    private void registerMBean() {
+        try {
+            ObjectName objectName = new ObjectName("devs.lair.ipc:actor=configProvider");
+            MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+            StandardMBean standardMBean = new StandardMBean(this, ConfigProviderMBean.class);
+            server.registerMBean(standardMBean, objectName);
+        } catch (Exception e) {
+            System.out.println("Не удалось зарегистрировать MBean = ConfigProvider");
+        }
     }
 
     public void loadConfig() {
@@ -141,6 +158,7 @@ public class ConfigProvider implements AutoCloseable {
         }
     }
 
+    @Override
     public String getProperty(String propertyName) throws IllegalStateException {
         if (updating) {
             throw new IllegalStateException("Идет обновление. Приходите позже");
@@ -149,23 +167,53 @@ public class ConfigProvider implements AutoCloseable {
         return Utils.isNullOrEmpty(property) ? null : property.trim();
     }
 
+    @Override
     public int getPlayerTick() {
         return playerTick;
     }
 
+    @Override
     public int getArbiterTick() {
         return arbiterTick;
     }
 
+    @Override
     public int getMaxPlayerCount() {
         return maxPlayerCount;
     }
 
+    @Override
     public int getProducerTick() {
         return producerTick;
     }
 
+    @Override
     public int getMaxRound() {
         return maxRound;
+    }
+
+    @Override
+    public void setPlayerTick(int playerTick) {
+        this.playerTick = playerTick;
+    }
+
+    @Override
+    public void setArbiterTick(int arbiterTick) {
+        this.arbiterTick = arbiterTick;
+    }
+
+    @Override
+    public void setMaxPlayerCount(int maxPlayerCount) {
+        this.maxPlayerCount = maxPlayerCount;
+    }
+
+    @Override
+    public void setProducerTick(int producerTick) {
+        this.producerTick = producerTick;
+    }
+
+    @Override
+    public void setMaxRound(int maxRound) {
+        this.maxRound = maxRound;
     }
 }
