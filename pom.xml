@@ -15,6 +15,7 @@
         <module>rmi</module>
         <module>memory</module>
         <module>balancer</module>
+        <module>jmx</module>
     </modules>
 
     <properties>
