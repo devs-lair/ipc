@@ -86,12 +86,22 @@ class ArbiterTest {
 
                 when(registry.lookup(any())).thenReturn(new IPlayerProvider() {
                     @Override
-                    public String getPlayerName(String arbiterName) throws RemoteException {
+                    public String getPlayerName(String arbiterName, int position) throws RemoteException {
                         return "pl";
                     }
 
                     @Override
-                    public void returnPlayer(String player) throws RemoteException {
+                    public void returnPlayer(String arbiterName, String player) throws RemoteException {
+
+                    }
+
+                    @Override
+                    public void killZombie(String arbiterName, String player) throws RemoteException {
+
+                    }
+
+                    @Override
+                    public void finishPlayer(String name, String[] players) throws RemoteException {
 
                     }
                 });
@@ -120,7 +130,7 @@ class ArbiterTest {
         starter.start();
 
         int arbiterTick = configProvider.getArbiterTick();
-        verify(playerProvider, timeout(3L * arbiterTick).times(4)).getPlayerName(anyString());
+        verify(playerProvider, timeout(3L * arbiterTick).times(4)).getPlayerName(anyString(), anyInt());
         verify(configProvider, timeout(3L * arbiterTick).times(3)).getArbiterTick();
 
         arbiter.stop();
@@ -211,7 +221,7 @@ class ArbiterTest {
 
         ConfigProvider configProvider = getSpyForConfigProvider();
         IPlayerProvider playerProvider = getSpyForPlayerProvider();
-        when(playerProvider.getPlayerName(anyString())).thenAnswer(
+        when(playerProvider.getPlayerName(anyString(), anyInt())).thenAnswer(
                 invocation -> new Random().nextInt(3) == 0
                         ? Utils.generateUniqueName(null, "player")
                         : null);
@@ -312,7 +322,7 @@ class ArbiterTest {
 
     private IPlayerProvider getSpyForPlayerProvider() throws RemoteException {
         IPlayerProvider playerProvider = spy(IPlayerProvider.class);
-        when(playerProvider.getPlayerName(anyString())).thenAnswer(invocation ->
+        when(playerProvider.getPlayerName(anyString(), anyInt())).thenAnswer(invocation ->
                 Utils.generateUniqueName(null, "player"));
         return playerProvider;
     }

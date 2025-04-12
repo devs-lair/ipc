@@ -37,11 +37,8 @@ public class Arbiter extends ConfigurableProcess {
         System.setOut(new PrintStream(OutputStream.nullOutputStream()));
 
         Path arbiterFile = Paths.get(ARBITER_DIR + "/" + name);
-        try {
-            //Move to system check
-            createDirectoryIfNotExist(arbiterFile.getParent());
+        try (configProvider) {
             Files.createFile(arbiterFile);
-
             while (!currentThread().isInterrupted()) {
                 fetchPlayers();
 
@@ -55,7 +52,7 @@ public class Arbiter extends ConfigurableProcess {
             }
         } catch (FileAlreadyExistsException e) {
             System.out.println("Арбитр с именем " + name + " уже запущен " + e.getMessage());
-        } catch (InterruptedException e) {
+        } catch (InterruptedException | IllegalStateException e) {
             System.out.println("Основной поток был прерван");
         } catch (IOException e) {
             System.out.println("Ошибка при создании файла арбитра");
@@ -67,24 +64,24 @@ public class Arbiter extends ConfigurableProcess {
     }
 
     private void fetchPlayers() {
-        for (int i = 0; i < 2; i++) {
-            String playerName = players[i];
+        for (int position = 0; position < 2; position++) {
+            String playerName = players[position];
             if (playerName == null || !Files.exists(getPathFromName(playerName))) {
                 if (interrupted) throw new IllegalStateException();
 
-                players[i] = fetchPlayerName();
+                players[position] = fetchPlayerName(position);
                 roundNumber = 1;
             }
         }
     }
 
-    private String fetchPlayerName() {
+    private String fetchPlayerName(int position) {
         try {
             if (playerProvider == null) {
                 Registry registry = LocateRegistry.getRegistry();
                 playerProvider = (IPlayerProvider) registry.lookup(IPlayerProvider.class.getName());
             }
-            return playerProvider.getPlayerName("arbiter");
+            return playerProvider.getPlayerName(name, position);
         } catch (RemoteException e) {
             playerProvider = null;
             System.out.println("Ошибка при получения хода игрока из PlayerProvider");
@@ -94,12 +91,42 @@ public class Arbiter extends ConfigurableProcess {
         return null;
     }
 
+    private void killZombie(String playerName) {
+        try {
+            playerProvider.killZombie(name, playerName);
+
+            if (players[0].equals(playerName)) {
+                players[0] = null;
+            }
+
+            if (players[1].equals(playerName)) {
+                players[1] = null;
+            }
+
+        } catch (RemoteException e) {
+            System.out.println("Ошибка при попытке убить зомби игрока");
+        } catch (NullPointerException e) {
+            System.out.println("Нет playerProvider");
+        }
+    }
+
+    private void finishPlayers() {
+        try {
+            playerProvider.finishPlayer(name, players);
+            players[0] = players[1] = null;
+        } catch (RemoteException e) {
+            System.out.println("Ошибка при попытке завершить процесс игрока");
+        } catch (NullPointerException e) {
+            System.out.println("Нет playerProvider");
+        }
+    }
+
     private void returnPlayers() {
         try {
             for (int i = 0; i < 2; i++) {
                 String player = players[i];
                 if (player != null) {
-                    playerProvider.returnPlayer(player);
+                    playerProvider.returnPlayer(name, player);
                     players[i] = null;
                 }
             }
@@ -126,10 +153,7 @@ public class Arbiter extends ConfigurableProcess {
 
             if (roundNumber++ >= configProvider.getMaxRound()) {
                 System.out.printf("Игроки %s и %s завершили игру \n\n", players[0], players[1]);
-                deletePlayersFiles();
-                if (interrupted) {
-                    throw new IllegalStateException();
-                }
+                finishPlayers();
             }
         }
     }
@@ -144,6 +168,7 @@ public class Arbiter extends ConfigurableProcess {
         return true;
     }
 
+    //Refactor this!!!
     private Move readPlayerMove(String playerName) {
         int attempt = 0;
         Path playerFile = getPathFromName(playerName);
@@ -159,6 +184,9 @@ public class Arbiter extends ConfigurableProcess {
             } while (++attempt <= configProvider.readPositiveInt(MAX_ATTEMPT_KEY, 5));
         } catch (Exception e) {
             switch (e) {
+                case InterruptedException ie -> {
+                    return null;
+                }
                 case NoSuchFileException nsfe -> System.out.printf("Нет файла для игрока %s\n", playerName);
                 case IllegalArgumentException iae ->
                         System.out.printf("Некорректный ход игрока %s. %s\n", playerName, iae.getMessage());
@@ -166,10 +194,7 @@ public class Arbiter extends ConfigurableProcess {
             }
         }
 
-        //Убиваем зомби игрока, который есть, но не ходят
-//        if (!tryDelete(getPathFromName(playerName))) {
-//            System.out.println("Не удалось удалить файл зомби игрока" + playerName);
-//        }
+        killZombie(playerName);
         return null;
     }
 
@@ -191,16 +216,6 @@ public class Arbiter extends ConfigurableProcess {
         System.out.println(playerMove == null
                 ? "Нет хода игрока " + playerName
                 : "Ход игрока " + playerName + " = " + playerMove);
-    }
-
-    private void deletePlayersFiles() {
-        for (String playerName : players) {
-            if (playerName == null) continue;
-            if (!tryDelete(getPathFromName(playerName))) {
-                System.out.println("Не удалось удалить файл игрока" + playerName);
-            }
-        }
-        players[0] = players[1] = null;
     }
 
     private void clearPlayersFiles() {

@@ -4,14 +4,17 @@ import devs.lair.ipc.jmx.service.Balancer;
 import devs.lair.ipc.jmx.service.PlayerProvider;
 import devs.lair.ipc.jmx.service.ProcessStarter;
 import devs.lair.ipc.jmx.service.model.ActorProcess;
+import devs.lair.ipc.jmx.utils.Utils;
 
+import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
 import static devs.lair.ipc.jmx.service.enums.ProcessType.CONFIG_LOADER;
 import static devs.lair.ipc.jmx.service.enums.ProcessType.PLAYER_PRODUCER;
-import static devs.lair.ipc.jmx.utils.Constants.MEMORY_CONFIG_PATH;
+import static devs.lair.ipc.jmx.utils.Constants.*;
 
 public class GameController {
     private final PlayerProvider playerProvider = new PlayerProvider();
@@ -21,10 +24,10 @@ public class GameController {
     public void init() {
         try {
             //! Order !
-
             Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
-            playerProvider.init();
+            commonChecks();
 
+            playerProvider.init();
             actors.add(ProcessStarter.startProcess(CONFIG_LOADER));
             waitConfigLoaderStarted(); //not necessary
 
@@ -35,10 +38,15 @@ public class GameController {
                 Thread.sleep(1000);
                 printStatus();
             }
-
         } catch (Exception ex) {
             System.out.println("При инициализации произошла ошибка: " + ex.getMessage());
         }
+    }
+
+    private void commonChecks() throws IOException {
+        Utils.createDirectoryIfNotExist(Paths.get(PLAYER_DIR));
+        Utils.createDirectoryIfNotExist(Paths.get(ARBITER_DIR));
+        Utils.tryDelete(Paths.get(MEMORY_CONFIG_FILE));
     }
 
     private void waitConfigLoaderStarted() throws InterruptedException {
@@ -55,10 +63,15 @@ public class GameController {
     private void printStatus() {
         long arbiterCount = balancer.getArbitersCount();
         int querySize = playerProvider.getQuerySize();
-        int provided = playerProvider.getProviderPlayersCount();
+        int finished = playerProvider.getFinishedPlayersCount();
+        int added = playerProvider.getTotalPlayersCount();
+        int provided = playerProvider.getProvidedPlayersCount();
+        int zombieCount = playerProvider.getZombieCount();
+        int returned = playerProvider.getReturnedCount();
 
-        System.out.printf("Всего Арбитров %d, размер очереди %d, игроков обработано %d \n",
-                arbiterCount, querySize, provided);
+        System.out.printf("Всего Арбитров %d, очередь %d, игроков обнаружено %d, выдано %d (r = %d), отыграли %d (z = %d) \n",
+                    arbiterCount, querySize, added, provided, returned, finished, zombieCount);
+
     }
 
     public static void main(String[] args) {

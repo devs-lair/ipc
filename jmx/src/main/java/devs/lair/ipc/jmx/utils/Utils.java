@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 
@@ -70,11 +71,19 @@ public class Utils {
         return s == null || s.length == 0;
     }
 
-    public static void throwIllegalState(String message, Throwable throwable) {
-        throw new IllegalStateException(message, throwable);
-    }
+    public static ProcessHandle findZombieProcess(String argumentValue) {
+        for (ProcessHandle process : ProcessHandle.allProcesses().toList()) {
+            Optional<String[]> optionalArguments = process.info().arguments();
+            if (optionalArguments.isPresent()) {
+                String[] arguments = optionalArguments.get();
+                for (String argument : arguments) {
+                    if (argument.equals(argumentValue)) {
+                        return process;
+                    }
+                }
+            }
+        }
 
-    public static void throwIllegalArgument(String message, Throwable throwable) {
-        throw new IllegalStateException(message, throwable);
+        return null;
     }
 }

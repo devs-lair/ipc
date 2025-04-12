@@ -29,10 +29,7 @@ public class Player extends ConfigurableProcess {
 
         Path playerFile = getPathFromName(name);
         try (configProvider) {
-            //Move to system check
-            createDirectoryIfNotExist(playerFile.getParent());
             Files.createFile(playerFile);
-
             while (!currentThread().isInterrupted()) {
                 if (Files.size(playerFile) == 0) {
                     Files.write(playerFile, Move.getRandomMoveBytes(), WRITE);
