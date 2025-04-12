@@ -95,11 +95,11 @@ public class Arbiter extends ConfigurableProcess {
         try {
             playerProvider.killZombie(name, playerName);
 
-            if (players[0].equals(playerName)) {
+            if (playerName.equals(players[0])) {
                 players[0] = null;
             }
 
-            if (players[1].equals(playerName)) {
+            if (playerName.equals(players[1])) {
                 players[1] = null;
             }
 
