@@ -1,7 +1,6 @@
 package devs.lair.ipc.jmx.service;
 
 import devs.lair.ipc.jmx.service.interfaces.IPlayerProvider;
-import devs.lair.ipc.jmx.service.model.ArbiterProgress;
 import devs.lair.ipc.jmx.utils.Utils;
 
 import java.io.IOException;
@@ -15,9 +14,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -26,11 +23,11 @@ import static devs.lair.ipc.jmx.utils.Constants.PLAYER_DIR;
 import static devs.lair.ipc.jmx.utils.Constants.PLAYER_FILE_SUFFIX;
 import static devs.lair.ipc.jmx.utils.Utils.*;
 
-public class PlayerProvider implements IPlayerProvider {
+public class PlayerProvider implements IPlayerProvider, AutoCloseable {
 
     private DirWatcher dirWatcher;
+    private final ArbiterProvider arbiterProvider;
     private final Queue<String> players = new ConcurrentLinkedQueue<>();
-    private final Map<String, ArbiterProgress> playersByArbiter = new ConcurrentHashMap<>();
 
     private final AtomicInteger provided = new AtomicInteger(0);
     private final AtomicInteger returned = new AtomicInteger(0);
@@ -38,12 +35,17 @@ public class PlayerProvider implements IPlayerProvider {
     private final AtomicInteger added = new AtomicInteger(0);
     private final AtomicInteger zombie = new AtomicInteger(0);
 
+    public PlayerProvider(ArbiterProvider arbiterProvider) {
+        this.arbiterProvider = arbiterProvider;
+    }
+
     @Override
     public String getPlayerName(String arbiterName, int position) throws RemoteException {
         String playerName = players.poll();
+        arbiterProvider.onArbiterRequest(arbiterName);
 
         if (playerName != null && Files.exists(getPathFromName(playerName))) {
-            addPlayerToArbiter(arbiterName, position, playerName);
+            arbiterProvider.addPlayerToArbiter(arbiterName, position, playerName);
             provided.incrementAndGet();
             return playerName;
         }
@@ -54,7 +56,7 @@ public class PlayerProvider implements IPlayerProvider {
     public void finishPlayer(String arbiterName, String[] players) throws RemoteException {
         for (String playerName : players) {
             if (playerName == null) continue;
-            removePlayerFromArbiter(arbiterName, playerName);
+            arbiterProvider.removePlayerFromArbiter(arbiterName, playerName);
             tryDelete(getPathFromName(playerName));
             finished.incrementAndGet();
         }
@@ -65,7 +67,7 @@ public class PlayerProvider implements IPlayerProvider {
         if (playerName != null && Files.exists(getPathFromName(playerName))) {
             players.add(playerName);
             returned.incrementAndGet();
-            removePlayerFromArbiter(arbiterName, playerName);
+            arbiterProvider.removePlayerFromArbiter(arbiterName, playerName);
         }
     }
 
@@ -80,26 +82,19 @@ public class PlayerProvider implements IPlayerProvider {
 
         zombieProcess.destroyForcibly();
         tryDelete(getPathFromName(playerName));
-        removePlayerFromArbiter(arbiterName, playerName);
+        arbiterProvider.removePlayerFromArbiter(arbiterName, playerName);
 
         zombie.incrementAndGet();
         System.out.println("Зомби игрок был убит: " + playerName);
     }
 
-    private void addPlayerToArbiter(String arbiterName, int position, String playerName) {
-        ArbiterProgress progress = playersByArbiter
-                .computeIfAbsent(arbiterName, p -> new ArbiterProgress(arbiterName));
-        progress.setPlayer(playerName, position);
-    }
-
-    private void removePlayerFromArbiter(String arbiterName, String playerName) {
-        ArbiterProgress progress = playersByArbiter.get(arbiterName);
-        if (progress == null) {
-            System.out.println("Не найден прогресс арбитра с именем " + arbiterName);
-            return;
+    public void returnZombiePlayers(String[] fromZombie) {
+        for (String player : fromZombie) {
+            if (player != null) {
+                players.add(player);
+                returned.incrementAndGet();
+            }
         }
-
-        progress.removePlayer(playerName);
     }
 
     public void init() {
@@ -131,9 +126,6 @@ public class PlayerProvider implements IPlayerProvider {
             }
         });
         dirWatcher.startWatch();
-
-        Runtime.getRuntime()
-                .addShutdownHook(new Thread(this::close));
     }
 
     public void close() {

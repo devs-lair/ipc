@@ -1,5 +1,8 @@
 package devs.lair.ipc.jmx.utils;
 
+import devs.lair.ipc.jmx.service.enums.ProcessType;
+import devs.lair.ipc.jmx.service.model.ActorProcess;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -72,6 +75,10 @@ public class Utils {
     }
 
     public static ProcessHandle findZombieProcess(String argumentValue) {
+        return findProcessByArgument(argumentValue);
+    }
+
+    public static ProcessHandle findProcessByArgument(String argumentValue) {
         for (ProcessHandle process : ProcessHandle.allProcesses().toList()) {
             Optional<String[]> optionalArguments = process.info().arguments();
             if (optionalArguments.isPresent()) {
@@ -85,5 +92,16 @@ public class Utils {
         }
 
         return null;
+    }
+
+    public static ActorProcess findProcessByFile(Path p) {
+        ProcessHandle processByArgument = Utils.findProcessByArgument(p.getFileName().toString());
+        if (processByArgument != null) {
+            return new ActorProcess(processByArgument,
+                    ProcessType.ARBITER,
+                    p.getFileName().toString());
+        } else {
+            return null;
+        }
     }
 }

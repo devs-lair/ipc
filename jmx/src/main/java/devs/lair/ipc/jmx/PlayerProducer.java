@@ -12,7 +12,7 @@ import static devs.lair.ipc.jmx.service.enums.ProcessType.PLAYER;
 import static java.lang.Thread.currentThread;
 
 public class PlayerProducer extends ConfigurableProcess {
-    private final List<Process> players = new ArrayList<>();
+    private final List<ProcessHandle> players = new ArrayList<>();
     private int currentCount = 0;
 
     public void startProduce() {
@@ -34,12 +34,12 @@ public class PlayerProducer extends ConfigurableProcess {
 
         try {
             //Need time to normally start ProcessStarter::startProcess
-            Thread.sleep(500);
+            //Calculate pause (producerTick * players.size() maybe)
+            Thread.sleep(1500);
         } catch (InterruptedException e) {
             System.out.println("Процесс был прерван повторно");
         }
-
-        players.forEach(Process::destroy);
+        players.forEach(ProcessHandle::destroy);
     }
 
     public static void main(String[] args) {

@@ -1,8 +1,8 @@
 package devs.lair.ipc.jmx.service;
 
-
 import devs.lair.ipc.jmx.service.enums.ProcessType;
 import devs.lair.ipc.jmx.service.model.ActorProcess;
+import devs.lair.ipc.jmx.service.model.ArbiterProcess;
 import devs.lair.ipc.jmx.utils.Utils;
 
 import java.io.IOException;
@@ -37,7 +37,9 @@ public class ProcessStarter {
             }
 
             Process process = processBuilder.command(executeLine).start();
-            ActorProcess actorProcess = new ActorProcess(process, type, name);
+            ActorProcess actorProcess = (type == ProcessType.ARBITER)
+                        ? new ArbiterProcess(process.toHandle(), type ,name)
+                        : new ActorProcess(process, type, name);
 
             System.out.printf("Процесс был запущен: имя %s, тип %s, pid = %d \n",
                     actorProcess.getName(),

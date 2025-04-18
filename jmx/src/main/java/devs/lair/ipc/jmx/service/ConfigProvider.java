@@ -34,6 +34,7 @@ public class ConfigProvider implements AutoCloseable, ConfigProviderMBean {
     //Default params
     private int playerTick = 500;
     private int arbiterTick = 500;
+    private int arbiterZombieTimeout = 5000;
     private int maxPlayerCount = 4;
     private int producerTick = 100;
     private int maxRound = 5;
@@ -110,6 +111,7 @@ public class ConfigProvider implements AutoCloseable, ConfigProviderMBean {
         //Arbiter params
         arbiterTick = readPositiveInt("arbiter.tick", arbiterTick);
         maxRound = readPositiveInt("arbiter.maxRound", maxRound);
+        arbiterZombieTimeout = readPositiveInt("arbiter.zombieTimeout", arbiterZombieTimeout);
 
         //Producer params
         maxPlayerCount = readPositiveInt("producer.maxPlayers", maxPlayerCount);
@@ -193,6 +195,11 @@ public class ConfigProvider implements AutoCloseable, ConfigProviderMBean {
     }
 
     @Override
+    public int getArbiterZombieTimeout() {
+        return arbiterZombieTimeout;
+    }
+
+    @Override
     public void setPlayerTick(int playerTick) {
         this.playerTick = playerTick;
     }
@@ -215,5 +222,9 @@ public class ConfigProvider implements AutoCloseable, ConfigProviderMBean {
     @Override
     public void setMaxRound(int maxRound) {
         this.maxRound = maxRound;
+    }
+
+    @Override
+    public void setArbiterZombieTimeout(int arbiterZombieTimeout) {
     }
 }

@@ -9,27 +9,26 @@ import static devs.lair.ipc.jmx.service.enums.ProcessType.ARBITER;
 
 public class ActorProcess {
     private final String name;
-    private final Process process;
+    private final ProcessHandle process;
     private final ProcessType type;
 
     private ProcessStatus status = STARTED;
 
     public ActorProcess(Process process, ProcessType type, String name) {
-        checkArgs(process, name, type);
+        this(process.toHandle(), type, name);
+    }
 
-        this.process = process;
+    public ActorProcess(ProcessHandle processHandle, ProcessType type, String name) {
+        checkArgs(processHandle, name, type);
+
+        this.process = processHandle;
         this.name = name;
         this.type = type;
     }
 
-    public ActorProcess(Process process, ProcessType type) {
-        this(process, type, Utils.generateUniqueName(
-                type.toString().toLowerCase()));
-    }
-
     public void terminate() {
-        process.destroy();
         status = TERMINATING;
+        process.destroy();
         System.out.printf("Процессу отправлен сигнал на завершение: имя %s, тип %s, pid = %d \n",
                 name, type, process.pid());
     }
@@ -43,10 +42,19 @@ public class ActorProcess {
     }
 
     public boolean isDead() {
-        return status == DEAD;
+        if (status == DEAD) {
+            return true;
+        }
+        
+        if (!process.isAlive()) {
+            status = DEAD;
+            return true;
+        }
+        
+        return false;
     }
 
-    public Process getProcess() {
+    public ProcessHandle getProcess() {
         return process;
     }
 
@@ -66,8 +74,8 @@ public class ActorProcess {
         this.status = status;
     }
 
-    private void checkArgs(Process process, String name, ProcessType type) {
-        if (process == null) {
+    private void checkArgs(ProcessHandle processHandle, String name, ProcessType type) {
+        if (processHandle == null) {
             throw new IllegalArgumentException("Процесс не может быть null");
         }
 

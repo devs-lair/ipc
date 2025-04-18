@@ -13,6 +13,8 @@ public interface ConfigProviderMBean {
 
     int getMaxRound();
 
+    int getArbiterZombieTimeout();
+
     void setPlayerTick(int playerTick);
 
     void setArbiterTick(int arbiterTick);
@@ -22,4 +24,6 @@ public interface ConfigProviderMBean {
     void setProducerTick(int producerTick);
 
     void setMaxRound(int maxRound);
+
+    void setArbiterZombieTimeout(int arbiterZombieTimeout);
 }
